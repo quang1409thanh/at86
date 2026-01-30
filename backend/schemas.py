@@ -47,3 +47,24 @@ class UserResult(BaseModel):
     answers: Dict[str, str] # map question_id -> selected_option
     user_transcripts: Optional[Dict[str, Dict[str, str]]] = None # map question_id -> {option_key: text}
     user_notes: Optional[Dict[str, str]] = None # map question_id -> rationale note
+
+# Pipeline Schemas
+class ProviderConfig(BaseModel):
+    name: str  # e.g., "google", "openai", "claude"
+    keys: List[str] = []
+    models: List[str] = []
+    current_key_index: int = 0
+    current_model_index: int = 0
+
+class LLMSettings(BaseModel):
+    active_provider: str = "google"
+    providers: List[ProviderConfig] = []
+
+class PipelineConfig(BaseModel):
+    settings: LLMSettings
+    active_resource: str = "" # Description of what's currently being used
+
+class PipelineRunRequest(BaseModel):
+    part: int
+    test_id: str = "ETS_Test_01"
+    config: Optional[Dict[str, Any]] = None

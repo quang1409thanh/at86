@@ -1,3 +1,9 @@
 backend/venv
 data
 frontend/node_modules
+*.pyc
+.env
+**/__pycache__/
+tools/pipeline/temp_media
+llm_config.json
+backend/__pycache__

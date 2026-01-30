@@ -5,6 +5,7 @@ import TestRunner from './pages/TestRunner';
 import ResultPage from './pages/ResultPage';
 import HistoryPage from './pages/HistoryPage';
 import SettingsPage from './pages/SettingsPage';
+import Pipeline from './pages/Pipeline';
 
 function App() {
   return (
@@ -15,6 +16,7 @@ function App() {
         <Route path="test/:testId" element={<TestRunner />} />
         <Route path="result/:resultId" element={<ResultPage />} />
         <Route path="history" element={<HistoryPage />} />
+        <Route path="pipeline" element={<Pipeline />} />
         <Route path="settings" element={<SettingsPage />} />
       </Route>
     </Routes>

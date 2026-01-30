@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, Outlet } from 'react-router-dom';
-import { BookOpen, Home, BarChart2, Settings } from 'lucide-react';
+import { BookOpen, Home, BarChart2, Settings, Terminal } from 'lucide-react';
 
 export default function Layout() {
   return (
@@ -17,6 +17,7 @@ export default function Layout() {
           <NavItem to="/" icon={<Home size={20} />} label="Dashboard" />
           <NavItem to="/tests" icon={<BookOpen size={20} />} label="Tests" />
           <NavItem to="/history" icon={<BarChart2 size={20} />} label="History" />
+          <NavItem to="/pipeline" icon={<Terminal size={20} />} label="Pipeline" />
           <NavItem to="/settings" icon={<Settings size={20} />} label="Settings" />
         </nav>
         

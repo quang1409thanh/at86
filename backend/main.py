@@ -1,7 +1,14 @@
-from fastapi import FastAPI
+import os
+import sys
+import json
+import asyncio
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
-import os
+from typing import List
+
+# Add pipeline to path
+sys.path.append(os.path.join(os.path.dirname(__file__), "..", "tools", "pipeline"))
 
 app = FastAPI(title="TOEIC Platform API")
 
@@ -17,6 +24,9 @@ app.add_middleware(
 # API Routes
 from schemas import TestSummary, TestDetail, UserResult
 import data_service
+from routers import pipeline
+
+app.include_router(pipeline.router)
 
 @app.get("/api/tests", response_model=list[TestSummary])
 def get_tests():

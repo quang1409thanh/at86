@@ -97,7 +97,7 @@ export default function TestRunner() {
                   "font-black w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 border-2 transition-all text-sm",
                   answers[q.id] ? "bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-100" : "bg-white text-gray-400 border-gray-100"
               )}>
-                  {q.id.replace('q', '')}
+                  {q.id.replace(/^.*q/, '')}
               </span>
               <div className="flex-1 space-y-6">
                   {/* Standalone Audio only for Part 1-2 */}

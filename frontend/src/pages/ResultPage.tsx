@@ -69,7 +69,7 @@ export default function ResultPage() {
                             "font-black w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 border-2 text-sm",
                             isCorrect ? "bg-green-50 text-green-600 border-green-200 shadow-sm" : "bg-red-50 text-red-600 border-red-200 shadow-sm"
                         )}>
-                            {q.id.replace('q', '')}
+                            {q.id.replace(/^.*q/, '')}
                         </span>
                         {isCorrect ? <CheckCircle className="text-green-500" size={16} /> : <XCircle className="text-red-500" size={16} />}
                     </div>
