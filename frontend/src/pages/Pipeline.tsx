@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Play, Terminal, RefreshCw, CheckCircle2, Cpu, FolderOpen, Globe, FileText, Layout } from 'lucide-react';
+import { Play, Terminal, RefreshCw, CheckCircle2, Cpu, FolderOpen, FileText, Layout } from 'lucide-react';
 
 interface ProviderConfig {
   name: string;
@@ -27,7 +27,15 @@ const Pipeline: React.FC = () => {
   const [logs, setLogs] = useState<string[]>([]);
   const [isRunning, setIsRunning] = useState(false);
   const [activePromptPart, setActivePromptPart] = useState<number | null>(null);
-  const [testId, setTestId] = useState('ETS_Test_01');
+  const [testId, setTestId] = useState(() => {
+    const now = new Date();
+    const yyyy = now.getFullYear();
+    const mm = String(now.getMonth() + 1).padStart(2, '0');
+    const dd = String(now.getDate()).padStart(2, '0');
+    const hh = String(now.getHours()).padStart(2, '0');
+    const min = String(now.getMinutes()).padStart(2, '0');
+    return `ETS_${yyyy}${mm}${dd}_${hh}${min}`;
+  });
   const [runConfig, setRunConfig] = useState<any>({
     pdf_path: 'tools/data/PART1/part1.pdf',
     audio_dir: 'tools/data/PART1',
@@ -178,6 +186,12 @@ const Pipeline: React.FC = () => {
     }
   };
 
+  const goUp = () => {
+    // Basic parent resolution
+    const parent = browserPath.split('/').slice(0, -1).join('/') || '/';
+    setBrowserPath(parent);
+  };
+
   if (!config) return <div className="p-8 text-slate-500 italic">Initializing Pipeline Interface...</div>;
 
   const activeProviderName = config.settings.active_provider;
@@ -186,12 +200,19 @@ const Pipeline: React.FC = () => {
 
   const PathPicker = () => (
     <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
-      <div className="bg-white w-full max-w-2xl rounded-3xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[80vh]">
-        <div className="p-6 bg-slate-50 border-b border-slate-100 flex justify-between items-center">
-          <div>
-            <h4 className="font-bold text-slate-900">System Path Browser</h4>
-            <div className="text-[10px] text-slate-500 font-mono mt-1 truncate max-w-md">{browserPath}</div>
+      <div className="bg-white dark:bg-slate-800 w-full max-w-2xl rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden flex flex-col max-h-[80vh]">
+        <div className="p-6 bg-slate-50 dark:bg-slate-900 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center gap-4">
+          <div className="flex-1 min-w-0">
+            <h4 className="font-bold text-slate-900 dark:text-white">System Path Browser</h4>
+            <div className="text-[10px] text-slate-500 font-mono mt-1 truncate">{browserPath}</div>
           </div>
+          <button 
+            onClick={goUp} 
+            className="p-2 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-600 hover:text-slate-900 dark:hover:text-white flex items-center gap-1"
+            title="Go to Parent Directory"
+          >
+            <FolderOpen className="w-3 h-3" /> Up
+          </button>
           <button onClick={() => setIsBrowsing({ active: false, field: null })} className="text-2xl text-slate-400 hover:text-slate-900">&times;</button>
         </div>
         <div className="flex-1 overflow-y-auto p-2">
@@ -200,18 +221,18 @@ const Pipeline: React.FC = () => {
               <button 
                 key={idx}
                 onClick={() => selectPath(item)}
-                className="flex items-center gap-3 p-3 hover:bg-blue-50 rounded-xl transition-all text-left group"
+                className="flex items-center gap-3 p-3 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-xl transition-all text-left group"
               >
                 {item.type === 'dir' ? <FolderOpen className="w-5 h-5 text-blue-500" /> : <div className="w-5 h-5 flex items-center justify-center text-slate-400 text-[8px] border rounded">FILE</div>}
-                <span className="text-sm font-medium text-slate-700 truncate">{item.name}</span>
+                <span className="text-sm font-medium text-slate-700 dark:text-slate-200 truncate">{item.name}</span>
                 <span className="ml-auto text-[10px] font-bold text-slate-300 group-hover:text-blue-400 uppercase">{item.type}</span>
               </button>
             ))}
           </div>
         </div>
-        <div className="p-4 bg-slate-50 border-t border-slate-100 flex gap-3">
-          <button onClick={() => setIsBrowsing({ active: false, field: null })} className="px-6 py-2 bg-white border border-slate-200 text-slate-600 rounded-xl font-bold">Cancel</button>
-          <button onClick={confirmDirSelect} className="flex-1 px-6 py-2 bg-blue-600 text-white rounded-xl font-bold shadow-lg shadow-blue-200">Select Current Directory</button>
+        <div className="p-4 bg-slate-50 dark:bg-slate-900 border-t border-slate-100 dark:border-slate-700 flex gap-3">
+          <button onClick={() => setIsBrowsing({ active: false, field: null })} className="px-6 py-2 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-white rounded-xl font-bold">Cancel</button>
+          <button onClick={confirmDirSelect} className="flex-1 px-6 py-2 bg-blue-600 text-white rounded-xl font-bold shadow-lg shadow-blue-200">Select "{browserPath.split('/').pop() || 'Root'}"</button>
         </div>
       </div>
     </div>
@@ -225,23 +246,41 @@ const Pipeline: React.FC = () => {
             <Cpu className="w-8 h-8" />
           </div>
           <div>
-            <h1 className="text-3xl font-bold text-slate-900">Content Pipeline</h1>
-            <p className="text-slate-500">Monitoring & Execution Hub • <span className="text-blue-600 font-semibold uppercase">{activeProviderName} Engine</span></p>
+            <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Content Pipeline</h1>
+            <p className="text-slate-500 dark:text-slate-400">Monitoring & Execution Hub • <span className="text-blue-600 dark:text-blue-400 font-semibold uppercase">{activeProviderName} Engine</span></p>
           </div>
         </div>
         <div className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold border transition-all ${
-          isRunning ? 'bg-emerald-50 text-emerald-700 border-emerald-100 animate-pulse' : 'bg-slate-50 text-slate-600 border-slate-100'
+          isRunning ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 border-emerald-100 dark:border-emerald-800 animate-pulse' : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-100 dark:border-slate-700'
         }`}>
           <RefreshCw className={`w-4 h-4 ${isRunning ? 'animate-spin' : ''}`} />
           {isRunning ? 'Processing Batch...' : 'System Idle'}
         </div>
+        
+        {isRunning && (
+            <button 
+                onClick={async () => {
+                    try {
+                        const res = await fetch(`${API_BASE}/pipeline/stop`, { method: 'POST' });
+                        const data = await res.json();
+                        setLogs(prev => [...prev, `[!] ${data.message}`]);
+                        setIsRunning(false);
+                    } catch (e) {
+                         alert("Failed to stop pipeline");
+                    }
+                }}
+                className="ml-2 px-4 py-2 bg-red-100 text-red-600 rounded-full text-sm font-bold hover:bg-red-200 transition-colors flex items-center gap-2"
+            >
+                <div className="w-2 h-2 bg-red-600 rounded-sm" /> STOP
+            </button>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-1 space-y-6">
           {/* Target Test Configuration */}
-          <section className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
-             <div className="text-slate-900 font-bold flex items-center gap-2 mb-4">
+          <section className="bg-white dark:bg-slate-800 p-6 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-700">
+             <div className="text-slate-900 dark:text-white font-bold flex items-center gap-2 mb-4">
                 <Layout className="w-5 h-5 text-blue-600" />
                 Target Test
              </div>
@@ -253,7 +292,7 @@ const Pipeline: React.FC = () => {
                      type="text" 
                      value={testId}
                      onChange={(e) => setTestId(e.target.value)}
-                     className="w-full bg-slate-50 border border-slate-100 rounded-2xl pl-12 pr-4 py-3 text-sm font-bold focus:bg-white focus:border-blue-500 transition-all outline-none"
+                     className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-700 rounded-2xl pl-12 pr-4 py-3 text-sm font-bold focus:bg-white dark:focus:bg-slate-800 focus:border-blue-500 transition-all outline-none dark:text-white"
                      placeholder="e.g. ETS_Test_2024"
                    />
                 </div>
@@ -261,13 +300,13 @@ const Pipeline: React.FC = () => {
              </div>
           </section>
 
-          <section className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
+          <section className="bg-white dark:bg-slate-800 p-6 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-700">
             <div className="flex items-center justify-between mb-6">
-              <div className="text-slate-900 font-bold flex items-center gap-2">
-                <Cpu className="w-5 h-5 text-blue-600" />
+              <div className="text-slate-900 dark:text-white font-bold flex items-center gap-2">
+                <Cpu className="w-5 h-5 text-blue-600 dark:text-blue-400" />
                 Operational Status
               </div>
-              <span className="text-[10px] font-bold bg-slate-100 text-slate-500 px-2 py-0.5 rounded">Live</span>
+              <span className="text-[10px] font-bold bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300 px-2 py-0.5 rounded">Live</span>
             </div>
             
             <div className="space-y-3">
@@ -275,40 +314,40 @@ const Pipeline: React.FC = () => {
                  const isActive = idx === activeProvider.current_model_index;
                  return (
                   <div key={model} className={`relative flex items-center gap-3 p-4 rounded-2xl border-2 transition-all ${
-                    isActive ? 'border-blue-500 bg-blue-50/50 shadow-md scale-[1.02]' : 'border-slate-50 text-slate-400 opacity-60'
+                    isActive ? 'border-emerald-500 bg-emerald-50/50 dark:bg-emerald-900/20 shadow-md scale-[1.02]' : 'border-slate-50 dark:border-slate-700 text-slate-400 opacity-60'
                   }`}>
-                    {isActive && <div className="absolute -left-1 top-1/2 -translate-y-1/2 w-2 h-8 bg-blue-500 rounded-full" />}
-                    <div className={`p-2 rounded-lg ${isActive ? 'bg-blue-600 text-white' : 'bg-slate-100'}`}>
+                    {isActive && <div className="absolute -left-1 top-1/2 -translate-y-1/2 w-2 h-8 bg-emerald-500 rounded-full" />}
+                    <div className={`p-2 rounded-lg ${isActive ? 'bg-emerald-600 text-white' : 'bg-slate-100 dark:bg-slate-700'}`}>
                       {isActive ? <CheckCircle2 className="w-4 h-4" /> : <div className="w-4 h-4" />}
                     </div>
                     <div>
-                      <div className={`text-sm font-bold ${isActive ? 'text-blue-900' : ''}`}>{model}</div>
-                      {isActive && <div className="text-[10px] text-blue-600 font-bold uppercase tracking-widest mt-0.5">Active</div>}
+                      <div className={`text-sm font-bold ${isActive ? 'text-emerald-900 dark:text-emerald-400' : 'dark:text-white'}`}>{model}</div>
+                      {isActive && <div className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold uppercase tracking-widest mt-0.5">Active</div>}
                     </div>
                   </div>
                  )
               })}
             </div>
 
-            <div className="mt-6 p-4 bg-slate-50 rounded-2xl space-y-2">
+            <div className="mt-6 p-4 bg-slate-50 dark:bg-slate-900 rounded-2xl space-y-2">
                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Resource Provider</div>
-               <div className="text-sm font-medium text-slate-700">{config.active_resource}</div>
+               <div className="text-sm font-medium text-slate-700 dark:text-slate-300">{config.active_resource}</div>
             </div>
           </section>
 
-          <section className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
-             <div className="text-slate-900 font-bold flex items-center gap-2 mb-6">
-                <Play className="w-5 h-5 text-emerald-600" />
+          <section className="bg-white dark:bg-slate-800 p-6 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-700">
+             <div className="text-slate-900 dark:text-white font-bold flex items-center gap-2 mb-6">
+                <Play className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
                 Initialize Parts
              </div>
              <div className="grid grid-cols-2 gap-4">
-                <button onClick={() => openRunDialog(1)} className="group p-4 bg-slate-50 rounded-2xl border border-slate-100 hover:border-emerald-400 hover:bg-emerald-50 transition-all text-center space-y-1">
-                   <div className="text-2xl font-black text-slate-800 group-hover:scale-110 transition-transform">01</div>
-                   <div className="text-xs font-bold text-slate-500 uppercase">Part 1</div>
+                <button onClick={() => openRunDialog(1)} className="group p-4 bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-700 hover:border-emerald-400 dark:hover:border-emerald-400/50 hover:bg-emerald-50 dark:hover:bg-emerald-900/10 transition-all text-center space-y-1">
+                   <div className="text-2xl font-black text-slate-800 dark:text-white group-hover:scale-110 transition-transform">01</div>
+                   <div className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">Part 1</div>
                 </button>
-                <button onClick={() => openRunDialog(2)} className="group p-4 bg-slate-50 rounded-2xl border border-slate-100 hover:border-emerald-400 hover:bg-emerald-50 transition-all text-center space-y-1">
-                   <div className="text-2xl font-black text-slate-800 group-hover:scale-110 transition-transform">02</div>
-                   <div className="text-xs font-bold text-slate-500 uppercase">Part 2</div>
+                <button onClick={() => openRunDialog(2)} className="group p-4 bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-700 hover:border-emerald-400 dark:hover:border-emerald-400/50 hover:bg-emerald-50 dark:hover:bg-emerald-900/10 transition-all text-center space-y-1">
+                   <div className="text-2xl font-black text-slate-800 dark:text-white group-hover:scale-110 transition-transform">02</div>
+                   <div className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">Part 2</div>
                 </button>
              </div>
           </section>
@@ -349,18 +388,18 @@ const Pipeline: React.FC = () => {
 
       {activePromptPart && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
-          <div className="bg-white w-full max-w-xl rounded-[2rem] shadow-2xl border border-slate-200 overflow-hidden animate-in zoom-in-95">
-             <div className="p-8 bg-slate-50 border-b">
-                <h3 className="text-2xl font-black text-slate-900">PART {activePromptPart} CONFIG</h3>
-                <button onClick={() => setActivePromptPart(null)} className="absolute top-8 right-8 text-2xl text-slate-400 hover:text-slate-900">&times;</button>
+          <div className="bg-white dark:bg-slate-800 w-full max-w-xl rounded-[2rem] shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden animate-in zoom-in-95">
+             <div className="p-8 bg-slate-50 dark:bg-slate-900 border-b border-slate-100 dark:border-slate-700 relative">
+                <h3 className="text-2xl font-black text-slate-900 dark:text-white">PART {activePromptPart} CONFIG</h3>
+                <button onClick={() => setActivePromptPart(null)} className="absolute top-8 right-8 text-2xl text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors">&times;</button>
              </div>
              <div className="p-8 space-y-6">
-                <div className="flex items-center gap-4 p-4 bg-blue-50 rounded-2xl">
+                <div className="flex items-center gap-4 p-4 bg-blue-50 dark:bg-slate-700/50 rounded-2xl border border-blue-100 dark:border-slate-600">
                    <div className="flex-1">
-                      <div className="text-sm font-bold">File Access Mode</div>
-                      <div className="text-xs text-slate-500">{runConfig.is_cloud ? 'Cloud Retrieval' : 'Local Storage'}</div>
+                      <div className="text-sm font-bold text-slate-900 dark:text-white">File Access Mode</div>
+                      <div className="text-xs text-slate-500 dark:text-slate-400">{runConfig.is_cloud ? 'Cloud Retrieval' : 'Local Storage'}</div>
                    </div>
-                   <button onClick={() => setRunConfig({...runConfig, is_cloud: !runConfig.is_cloud})} className="px-4 py-2 bg-white rounded-xl text-xs font-bold border shadow-sm">SWITCH</button>
+                   <button onClick={() => setRunConfig({...runConfig, is_cloud: !runConfig.is_cloud})} className="px-4 py-2 bg-white dark:bg-slate-600 rounded-xl text-xs font-bold border border-blue-100 dark:border-slate-500 shadow-sm text-blue-900 dark:text-white hover:bg-blue-50 dark:hover:bg-slate-500 transition-colors">SWITCH</button>
                 </div>
 
                 <div className="space-y-4">
@@ -372,7 +411,7 @@ const Pipeline: React.FC = () => {
                              type="text" 
                              value={runConfig.pdf_path} 
                              onChange={(e) => setRunConfig({ ...runConfig, pdf_path: e.target.value })}
-                             className="flex-1 bg-slate-50 border rounded-xl px-4 py-3 text-sm font-medium focus:bg-white focus:border-blue-500 transition-all outline-none" 
+                             className="flex-1 bg-slate-50 dark:bg-slate-900 border rounded-xl px-4 py-3 text-sm font-medium focus:bg-white dark:focus:bg-slate-800 focus:border-blue-500 transition-all outline-none dark:text-white dark:border-slate-600" 
                            />
                            <button onClick={() => setIsBrowsing({ active: true, field: 'pdf_path' })} className="px-4 bg-slate-900 text-white rounded-xl hover:bg-slate-800 transition-colors"><FolderOpen className="w-4 h-4"/></button>
                         </div>
@@ -385,15 +424,15 @@ const Pipeline: React.FC = () => {
                            type="text" 
                            value={runConfig.audio_dir} 
                            onChange={(e) => setRunConfig({ ...runConfig, audio_dir: e.target.value })}
-                           className="flex-1 bg-slate-50 border rounded-xl px-4 py-3 text-sm font-medium focus:bg-white focus:border-blue-500 transition-all outline-none" 
+                           className="flex-1 bg-slate-50 dark:bg-slate-900 border rounded-xl px-4 py-3 text-sm font-medium focus:bg-white dark:focus:bg-slate-800 focus:border-blue-500 transition-all outline-none dark:text-white dark:border-slate-600" 
                          />
                          <button onClick={() => setIsBrowsing({ active: true, field: 'audio_dir' })} className="px-4 bg-slate-900 text-white rounded-xl hover:bg-slate-800 transition-colors"><FolderOpen className="w-4 h-4"/></button>
                       </div>
                    </div>
                 </div>
              </div>
-             <div className="p-8 bg-slate-50 flex gap-4 border-t">
-                <button onClick={() => setActivePromptPart(null)} className="flex-1 py-4 bg-white border text-slate-600 rounded-2xl font-bold">CANCEL</button>
+             <div className="p-8 bg-slate-50 dark:bg-slate-900 flex gap-4 border-t dark:border-slate-700">
+                <button onClick={() => setActivePromptPart(null)} className="flex-1 py-4 bg-white dark:bg-slate-800 border dark:border-slate-600 text-slate-600 dark:text-white rounded-2xl font-bold">CANCEL</button>
                 <button onClick={runPart} className="flex-[2] py-4 bg-blue-600 text-white rounded-2xl font-black shadow-lg">START PROCESSING</button>
              </div>
           </div>

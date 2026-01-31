@@ -13,10 +13,13 @@ def update_test_json(test_id, part_number, questions, output_dir, title=None, in
     os.makedirs(output_dir, exist_ok=True)
     os.makedirs("tools/pipeline", exist_ok=True)
 
+    from datetime import datetime
+    
     data = {
         "test_id": test_id,
         "title": title or f"TOEIC Part {part_number} - Practice",
-        "parts": []
+        "parts": [],
+        "published_at": datetime.now().isoformat()
     }
 
     # 1. Load existing data if available to keep other parts intact
@@ -27,6 +30,9 @@ def update_test_json(test_id, part_number, questions, output_dir, title=None, in
                 data["test_id"] = existing_data.get("test_id", data["test_id"])
                 data["title"] = existing_data.get("title", data["title"])
                 data["parts"] = existing_data.get("parts", [])
+                # Preserve existing published_at if it exists
+                if "published_at" in existing_data:
+                    data["published_at"] = existing_data["published_at"]
         except Exception as e:
             print(f"[!] Warning: Could not read existing test.json: {e}")
 

@@ -9,3 +9,8 @@ tenacity
 websockets
 openai
 pymupdf
+sqlalchemy
+passlib[bcrypt]
+python-jose[cryptography]
+pymysql
+bcrypt==4.0.1

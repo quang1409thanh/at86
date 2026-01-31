@@ -21,29 +21,38 @@ class RotationManager:
         self.providers = {}
         self.active_provider = "google"
         
-        self.config_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "llm_config.json"))
+        # Database connection is imported inside methods to avoid circular imports during startup if needed
+        # or we rely on sys.path hacks. Assuming backend is importable.
+        try:
+            from backend.app.db.session import SessionLocal
+            from backend.app.db.models import LLMGlobalConfig
+            self.SessionLocal = SessionLocal
+            self.LLMGlobalConfig = LLMGlobalConfig
+            self._has_db = True
+        except ImportError as e:
+            print(f"[!] Warning: Could not import backend.app.db: {e}. Persistence disabled.")
+            self._has_db = False
+
         self._load_config()
 
     def _load_config(self):
-        import json
-        
-        # 1. Try to load from file first
-        if os.path.exists(self.config_path):
+        # 1. Try to load from DB
+        db_config = None
+        if self._has_db:
             try:
-                with open(self.config_path, 'r') as f:
-                    data = json.load(f)
-                    self.active_provider = data.get("active_provider", "google")
-                    self.providers = data.get("providers", {})
-                    # Ensure minimal structure for known providers if missing? 
-                    # Actually, if we load from file, we trust it.
-                    # But maybe we should merge with env vars if file is empty or partial? 
-                    # For now, let's treat file as source of truth if it exists.
-                    print(f"[*] Loaded LLM config from {self.config_path}")
-                    return
+                db = self.SessionLocal()
+                db_config = db.query(self.LLMGlobalConfig).first()
+                db.close()
             except Exception as e:
-                print(f"[!] Warning: Failed to load config file: {e}")
+                print(f"[!] Warning: DB Connection failed: {e}")
 
-        # 2. Fallback to Env Vars
+        if db_config:
+            self.active_provider = db_config.active_provider
+            self.providers = db_config.providers
+            print(f"[*] Loaded LLM config from Database (Provider: {self.active_provider})")
+            return
+
+        # 2. Fallback to Env Vars (same as before)
         load_dotenv(override=True)
         self.active_provider = os.getenv("LLM_PROVIDER", "google").lower()
         
@@ -53,7 +62,6 @@ class RotationManager:
             "key_idx": 0,
             "model_idx": 0
         }
-        
         self.providers["openai"] = {
             "keys": [k.strip() for k in os.getenv("OPENAI_API_KEY", "").split(",") if k.strip()],
             "models": [m.strip() for m in os.getenv("OPENAI_MODEL", "gpt-4o-mini").split(",") if m.strip()],
@@ -61,34 +69,31 @@ class RotationManager:
             "model_idx": 0
         }
 
-    def _save_to_file(self):
-        import json
-        data = {
-            "active_provider": self.active_provider,
-            "providers": self.providers
-        }
+    def _save_to_db(self):
+        if not self._has_db: return
         try:
-            with open(self.config_path, 'w') as f:
-                json.dump(data, f, indent=4)
-            print(f"[*] Saved LLM config to {self.config_path}")
+            db = self.SessionLocal()
+            config = db.query(self.LLMGlobalConfig).first()
+            if not config:
+                config = self.LLMGlobalConfig()
+                db.add(config)
+            
+            config.active_provider = self.active_provider
+            config.providers = self.providers
+            db.commit()
+            db.refresh(config)
+            db.close()
+            print(f"[*] Saved LLM config to Database")
         except Exception as e:
-             print(f"[!] Error saving config: {e}")
+             print(f"[!] Error saving config to DB: {e}")
 
     def update_settings(self, settings: dict):
         with self._lock:
             self.active_provider = settings.get("active_provider", self.active_provider)
             
-            # Update internal state from request
-            # Logic: We might receive a list of ProviderConfig objects or dicts
+            # Logic: Update internal state from request
             for p_data in settings.get("providers", []):
                 name = p_data["name"]
-                
-                # Preserve indices if not explicitly reset? 
-                # For simplicity, let's reset indices or keep them if they are in range.
-                # But typically updates from UI might not send current indices, or sends 0.
-                # Let's trust the UI or just take keys/models.
-                
-                # If we want to keep current rotation state, we need to check existing
                 current_p = self.providers.get(name, {})
                 current_key_idx = current_p.get("key_idx", 0)
                 current_model_idx = current_p.get("model_idx", 0)
@@ -107,15 +112,17 @@ class RotationManager:
                     "model_idx": current_model_idx
                 }
             
-            self._save_to_file()
+            self._save_to_db()
 
     def get_current(self):
         with self._lock:
             p = self.providers.get(self.active_provider)
             if not p:
+                # auto-heal if missing structure but valid provider name?
+                # or just fallback
                 raise Exception(f"Provider {self.active_provider} not configured.")
             
-            if not p["keys"]:
+            if not p.get("keys"):
                 raise Exception(f"No API keys configured for {self.active_provider}.")
             
             return p["keys"][p["key_idx"]], p["models"][p["model_idx"]]
@@ -124,7 +131,7 @@ class RotationManager:
         with self._lock:
             p = self.providers.get(self.active_provider)
             if not p: return f"Unknown Provider ({self.active_provider})"
-            if not p["keys"]: return f"{self.active_provider.capitalize()} (No Keys)"
+            if not p.get("keys"): return f"{self.active_provider.capitalize()} (No Keys)"
             
             return f"{self.active_provider.capitalize()} {p['models'][p['model_idx']]} (Key {p['key_idx'] + 1}/{len(p['keys'])})"
 

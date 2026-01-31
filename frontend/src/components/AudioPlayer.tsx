@@ -77,7 +77,7 @@ export default function AudioPlayer({ src, className, autoplay = false }: AudioP
   }
 
   return (
-    <div className={cn("bg-white rounded-xl border border-gray-200 p-3 shadow-sm flex items-center gap-3", className)}>
+    <div className={cn("bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-600 p-3 shadow-sm flex items-center gap-3", className)}>
       <audio
         ref={audioRef}
         src={fullSrc}
@@ -100,15 +100,15 @@ export default function AudioPlayer({ src, className, autoplay = false }: AudioP
               max={duration || 0}
               value={currentTime}
               onChange={handleSeek}
-              className="w-full h-1 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+              className="w-full h-1 bg-gray-200 dark:bg-slate-600 rounded-lg appearance-none cursor-pointer accent-blue-600"
           />
-          <div className="flex justify-between text-xs text-gray-400 font-mono">
+          <div className="flex justify-between text-xs text-gray-400 dark:text-gray-500 font-mono">
               <span>{formatTime(currentTime)}</span>
               <span>{formatTime(duration)}</span>
           </div>
       </div>
 
-      <button onClick={changeSpeed} className="text-xs font-bold text-gray-500 bg-gray-100 px-2 py-1 rounded hover:bg-gray-200 w-12">
+      <button onClick={changeSpeed} className="text-xs font-bold text-gray-500 dark:text-gray-300 bg-gray-100 dark:bg-slate-700 px-2 py-1 rounded hover:bg-gray-200 dark:hover:bg-slate-600 w-12 transition-colors">
           {playbackRate}x
       </button>
     </div>

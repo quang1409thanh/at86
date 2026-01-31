@@ -22,11 +22,11 @@ export default function ResultPage() {
         const fetchData = async () => {
             try {
                 setLoading(true);
-                const resResponse = await api.get<UserResult>(`/results/${resultId}`);
+                const resResponse = await api.get<UserResult>(`/toeic/results/${resultId}`);
                 const resData = resResponse.data;
                 setResult(resData);
                 
-                const testResponse = await api.get<TestDetail>(`/tests/${resData.test_id}`);
+                const testResponse = await api.get<TestDetail>(`/toeic/tests/${resData.test_id}`);
                 setTest(testResponse.data);
             } catch (err) {
                 console.error("Failed to load result data", err);
@@ -46,10 +46,10 @@ export default function ResultPage() {
     );
 
     if (!result || !test) return (
-        <div className="max-w-xl mx-auto mt-20 p-8 bg-white rounded-3xl shadow-sm border border-gray-100 text-center space-y-6">
+        <div className="max-w-xl mx-auto mt-20 p-8 bg-white dark:bg-slate-800 rounded-3xl shadow-sm border border-gray-100 dark:border-slate-700 text-center space-y-6">
             <XCircle className="mx-auto text-red-500" size={64} />
-            <h2 className="text-2xl font-bold">Error Loading Results</h2>
-            <p className="text-gray-500">We couldn't find the result you were looking for.</p>
+            <h2 className="text-2xl font-bold dark:text-white">Error Loading Results</h2>
+            <p className="text-gray-500 dark:text-gray-400">We couldn't find the result you were looking for.</p>
             <Link to="/history" className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition">
                 <FileText size={18} /> View History
             </Link>
@@ -62,7 +62,7 @@ export default function ResultPage() {
         const isCorrect = userAnswer === q.correct_answer;
 
         return (
-            <div key={q.id} className="p-6 rounded-3xl border border-transparent hover:border-gray-100 hover:bg-white transition-all">
+            <div key={q.id} className="p-6 rounded-3xl border border-transparent hover:border-gray-100 dark:hover:border-slate-700 hover:bg-white dark:hover:bg-slate-800 transition-all">
                 <div className="flex gap-6">
                     <div className="flex flex-col items-center gap-2">
                         <span className={cn(
@@ -78,12 +78,12 @@ export default function ResultPage() {
                         {/* Audio/Image Context at Question Level */}
                         {partNumber <= 2 && q.audio && <AudioPlayer src={`${test.test_id}/${q.audio}`} />}
                         {q.image && (
-                            <div className="border border-gray-100 rounded-2xl overflow-hidden max-w-sm shadow-sm bg-white">
+                            <div className="border border-gray-100 dark:border-slate-700 rounded-2xl overflow-hidden max-w-sm shadow-sm bg-white dark:bg-black">
                                 <img src={`http://localhost:8000/static/${test.test_id}/${q.image}`} alt={`Question ${q.id}`} className="w-full h-auto" />
                             </div>
                         )}
 
-                        {q.text && <p className="text-xl font-black text-gray-900 leading-tight">{q.text}</p>}
+                        {q.text && <p className="text-xl font-black text-gray-900 dark:text-white leading-tight">{q.text}</p>}
 
                         {/* Part 2: Transcription of the Question itself (Top level) */}
                         {partNumber === 2 && q.transcripts?.['question'] && (
@@ -109,8 +109,8 @@ export default function ResultPage() {
                                     <div key={idx} className="space-y-3">
                                         <div className={cn(
                                             "flex items-center gap-4 p-4 rounded-2xl border-2 transition-all",
-                                            isCorrectOpt ? "border-green-500 bg-green-50/30" : 
-                                            isUserChoice ? "border-red-500 bg-red-50/30" : "border-gray-50 bg-white"
+                                            isCorrectOpt ? "border-green-500 bg-green-50/30 dark:bg-green-900/20" : 
+                                            isUserChoice ? "border-red-500 bg-red-50/30 dark:bg-red-900/20" : "border-gray-50 dark:border-slate-700 bg-white dark:bg-slate-800"
                                         )}>
                                             <div className={cn(
                                                 "w-8 h-8 rounded-full border-2 flex items-center justify-center text-xs font-black",
@@ -121,8 +121,8 @@ export default function ResultPage() {
                                             </div>
                                             <span className={cn(
                                                 "font-bold text-base",
-                                                isCorrectOpt ? "text-green-900" :
-                                                isUserChoice ? "text-red-900" : "text-gray-700"
+                                                isCorrectOpt ? "text-green-900 dark:text-green-400" :
+                                                isUserChoice ? "text-red-900 dark:text-red-400" : "text-gray-700 dark:text-gray-300"
                                             )}>
                                                 {q.options ? opt : `Option ${opt}`}
                                             </span>
@@ -134,7 +134,7 @@ export default function ResultPage() {
 
                                         {/* Transcript Review per Option (Parts 1 & 2) */}
                                         {partNumber <= 2 && q.transcripts?.[optKey!] && (
-                                            <div className="ml-12 p-4 bg-white/50 rounded-xl border border-gray-100 shadow-inner">
+                                            <div className="ml-12 p-4 bg-white/50 dark:bg-slate-800/50 rounded-xl border border-gray-100 dark:border-slate-700 shadow-inner">
                                                 <div className="flex items-center justify-between mb-2">
                                                     <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Transcript Comparison</span>
                                                 </div>
@@ -187,12 +187,12 @@ export default function ResultPage() {
 
     return (
         <div className="max-w-4xl mx-auto space-y-8 pb-32">
-            <header className="flex items-center justify-between bg-white p-8 rounded-3xl shadow-sm border border-gray-100">
+            <header className="flex items-center justify-between bg-white dark:bg-slate-800 p-8 rounded-3xl shadow-sm border border-gray-100 dark:border-slate-700">
                 <div className="space-y-1">
-                    <h1 className="text-3xl font-black text-gray-900 tracking-tight">{test.title}</h1>
-                    <p className="text-gray-500 font-medium">Completed on {new Date(result.timestamp).toLocaleDateString()}</p>
+                    <h1 className="text-3xl font-black text-gray-900 dark:text-white tracking-tight">{test.title}</h1>
+                    <p className="text-gray-500 dark:text-gray-400 font-medium">Completed on {new Date(result.timestamp).toLocaleDateString()}</p>
                 </div>
-                <Link to="/" className="p-3 rounded-2xl bg-gray-50 text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition shadow-inner">
+                <Link to="/" className="p-3 rounded-2xl bg-gray-50 dark:bg-slate-700 text-gray-400 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition shadow-inner">
                     <Home size={28} />
                 </Link>
             </header>
@@ -202,12 +202,12 @@ export default function ResultPage() {
                     <div className="text-5xl font-black mb-2">{result.score}</div>
                     <div className="text-blue-100 font-bold uppercase tracking-widest text-xs">Estimated Score</div>
                 </div>
-                <div className="bg-white rounded-3xl p-8 border border-gray-100 shadow-sm flex flex-col items-center justify-center text-center">
-                    <div className="text-4xl font-black text-green-600 mb-2">{result.correct_count} / {result.total_questions}</div>
+                <div className="bg-white dark:bg-slate-800 rounded-3xl p-8 border border-gray-100 dark:border-slate-700 shadow-sm flex flex-col items-center justify-center text-center">
+                    <div className="text-4xl font-black text-green-600 dark:text-green-400 mb-2">{result.correct_count} / {result.total_questions}</div>
                     <div className="text-gray-400 font-bold uppercase tracking-widest text-xs">Accuracy</div>
                 </div>
-                <div className="bg-white rounded-3xl p-8 border border-gray-100 shadow-sm flex flex-col items-center justify-center text-center">
-                    <div className="text-4xl font-black text-blue-600 mb-2 text-center flex items-center justify-center">
+                <div className="bg-white dark:bg-slate-800 rounded-3xl p-8 border border-gray-100 dark:border-slate-700 shadow-sm flex flex-col items-center justify-center text-center">
+                    <div className="text-4xl font-black text-blue-600 dark:text-blue-400 mb-2 text-center flex items-center justify-center">
                         {Math.round((result.correct_count / result.total_questions) * 100)}%
                     </div>
                     <div className="text-gray-400 font-bold uppercase tracking-widest text-xs">Performance Percentage</div>
@@ -216,16 +216,16 @@ export default function ResultPage() {
 
             <div className="space-y-12">
                 {test.parts.map(part => (
-                    <div key={part.part_number} className="bg-white rounded-3xl p-8 shadow-sm border border-gray-100">
+                    <div key={part.part_number} className="bg-white dark:bg-slate-800 rounded-3xl p-8 shadow-sm border border-gray-100 dark:border-slate-700">
                         <div className="flex items-center justify-between mb-8">
-                            <h2 className="text-2xl font-black text-gray-800 tracking-tight">Part {part.part_number}</h2>
+                            <h2 className="text-2xl font-black text-gray-800 dark:text-white tracking-tight">Part {part.part_number}</h2>
                         </div>
 
                         <div className="space-y-12">
                             {part.questions?.map(q => renderResultQuestion(q, part.part_number))}
 
                             {part.groups?.map(group => (
-                                <div key={group.id} className="p-8 bg-gray-50/50 rounded-3xl border border-gray-100 space-y-8">
+                                <div key={group.id} className="p-8 bg-gray-50/50 dark:bg-slate-700/30 rounded-3xl border border-gray-100 dark:border-slate-700 space-y-8">
                                     <div className="space-y-6">
                                         <div className="px-4 py-2 bg-blue-600 text-white text-[10px] font-black uppercase rounded-full w-fit tracking-widest">Shared Context</div>
                                         {group.audio && <AudioPlayer src={`${test.test_id}/${group.audio}`} />}
@@ -233,7 +233,7 @@ export default function ResultPage() {
                                             <img key={idx} src={`http://localhost:8000/static/${test.test_id}/${img}`} alt="Passage" className="w-full h-auto rounded-xl shadow-sm border border-gray-200" />
                                         ))}
                                         {group.passage_text && (
-                                            <div className="prose prose-blue max-w-none whitespace-pre-wrap font-medium text-gray-800 leading-relaxed italic border-l-4 border-blue-400 pl-6 bg-white p-6 rounded-2xl shadow-sm">
+                                            <div className="prose prose-blue max-w-none whitespace-pre-wrap font-medium text-gray-800 dark:text-gray-200 leading-relaxed italic border-l-4 border-blue-400 pl-6 bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm">
                                                 {group.passage_text}
                                             </div>
                                         )}

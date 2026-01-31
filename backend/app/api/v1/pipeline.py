@@ -5,12 +5,14 @@ import asyncio
 import threading
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from typing import List, Dict, Any
-from schemas import PipelineConfig, PipelineRunRequest, LLMSettings, ProviderConfig
+from ...schemas import PipelineConfig, PipelineRunRequest, LLMSettings, ProviderConfig
 
 # Add pipeline to path
-sys.path.append(os.path.join(os.path.dirname(__file__), "..", "..", "tools", "pipeline"))
+# Current file: backend/app/api/v1/pipeline.py
+# Root is at ../../../../
+sys.path.append(os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", "tools", "pipeline"))
 
-router = APIRouter(prefix="/api/pipeline", tags=["pipeline"])
+router = APIRouter(prefix="/pipeline", tags=["pipeline"])
 
 # Import pipeline components
 try:
@@ -28,7 +30,10 @@ main_loop = None
 @router.on_event("startup")
 async def startup_event():
     global main_loop
-    main_loop = asyncio.get_running_loop()
+    try:
+        main_loop = asyncio.get_running_loop()
+    except RuntimeError:
+        pass # Loop might happen later
 
 def broadcast_log(msg: str):
     # This is often called from background threads
@@ -66,8 +71,6 @@ def get_pipeline_config():
 @router.get("/models")
 def get_available_models():
     """Lists available models for the current active provider."""
-    # We can use the helper from common.llm or just call the provider directly 
-    # but using common.llm ensures consistent logic if we added it there
     from common.llm import list_available_models
     return list_available_models()
 
@@ -115,23 +118,78 @@ def browse_filesystem(path: str = "."):
     except Exception as e:
         return {"error": str(e), "items": []}
 
-    threading.Thread(target=start_run, daemon=True).start()
-    return {"status": "started", "part": request.part}
-
 @router.post("/run")
-async def run_pipeline(request: PipelineRunRequest):
+def run_pipeline(request: PipelineRunRequest):
     # Merge test_id into config so batch scripts can use it
     run_config = request.config or {}
     run_config["test_id"] = request.test_id
     
-    def start_run():
-        broadcast_log(f"[*] Initializing Part {request.part} Processing for Test ID: {request.test_id}")
-        if request.part == 1:
-            run_part1_batch.run_batch(log_callback=broadcast_log, input_config=run_config)
-        elif request.part == 2:
-            run_part2_batch.run_batch(log_callback=broadcast_log, input_config=run_config)
-        else:
-            broadcast_log(f"[!] Critical Error: Part {request.part} implementation missing.")
+    global active_process
+    if active_process and active_process.is_alive():
+        return {"status": "error", "message": "Pipeline already running"}
+
+    # Queue for inter-process communication
+    log_queue = multiprocessing.Queue()
     
-    threading.Thread(target=start_run, daemon=True).start()
+    # Start worker process
+    p = multiprocessing.Process(
+        target=_worker_entry,
+        args=(request.part, request.test_id, run_config, log_queue)
+    )
+    p.start()
+    active_process = p
+    
+    # Start thread to consume logs from queue
+    threading.Thread(target=_log_cconsumer, args=(log_queue,), daemon=True).start()
+    
     return {"status": "started", "part": request.part}
+
+@router.post("/stop")
+def stop_pipeline():
+    global active_process
+    if active_process and active_process.is_alive():
+        active_process.terminate()
+        active_process.join()  # Wait for it to die
+        broadcast_log("[!] Pipeline forced stopped by user.")
+        active_process = None
+        return {"status": "success", "message": "Pipeline stopped"}
+    return {"status": "error", "message": "No active pipeline running"}
+
+# --- Multiprocessing Helpers ---
+
+import multiprocessing
+
+# Global to hold the active process
+active_process = None
+
+def _log_cconsumer(queue: multiprocessing.Queue):
+    """Consumes logs from the child process and broadcasts them."""
+    while True:
+        try:
+            msg = queue.get()
+            if msg == "STOP_LOGGING":
+                break
+            broadcast_log(msg)
+        except Exception:
+            break
+
+def _worker_entry(part: int, test_id: str, config: Dict[str, Any], queue: multiprocessing.Queue):
+    """Entry point for the worker process."""
+    # Define a simple callback wrapper
+    def log_wrapper(msg: str):
+        queue.put(msg)
+    
+    try:
+        log_wrapper(f"[*] Initializing Part {part} Worker PID: {os.getpid()}")
+        if part == 1:
+            run_part1_batch.run_batch(log_callback=log_wrapper, input_config=config)
+        elif part == 2:
+            run_part2_batch.run_batch(log_callback=log_wrapper, input_config=config)
+        else:
+            log_wrapper(f"[!] Error: Unknown part {part}")
+    except Exception as e:
+        log_wrapper(f"[!] Critical Worker Error: {e}")
+    finally:
+        log_wrapper("[*] Batch process ended")
+        # Ensure queue flushes?
+        pass

@@ -38,33 +38,31 @@ echo -e "${GREEN}========================================${NC}"
 # 1. Cleanup old processes to avoid conflicts
 cleanup_ports
 
-# 2. Start Backend
+# Start Backend
 echo -e "\n${GREEN}[*] Setting up Backend...${NC}"
-cd backend || { echo "Backend directory not found!"; exit 1; }
-
-# Virtual Environment Check
-if [ ! -d "venv" ]; then
+# Use run.py from root
+if [ ! -d "backend/venv" ]; then
     echo -e "${YELLOW}Virtual environment not found. Creating...${NC}"
-    python3 -m venv venv
+    python3 -m venv backend/venv
 fi
 
-# Activate and Install Deps
-source venv/bin/activate
-echo "Installing/Updating Python dependencies (this may take a moment)..."
-pip install -r requirements.txt > /dev/null 2>&1
-if [ $? -ne 0 ]; then
-    echo -e "${RED}Failed to install python dependencies.${NC}"
-    exit 1
-fi
+# Activate to install deps
+source backend/venv/bin/activate
+echo "Installing/Updating Python dependencies..."
+pip install -r backend/requirements.txt > /dev/null 2>&1
 
-# Start Uvicorn
 echo "Starting FastAPI Server..."
-uvicorn main:app --reload --host 0.0.0.0 --port 8000 &
+# Run using the new entry point from project root
+# Note: we use the venv python explicitly or rely on activation
+# Running from root ensures path correctness
+python3 run.py &
 BACKEND_PID=$!
 echo -e "${GREEN}[+] Backend running on http://localhost:8000 (PID: $BACKEND_PID)${NC}"
 
+# Go to frontend (run.py runs in background, so we can cd safely for frontend)
+
 # 3. Start Frontend
-cd ../frontend || { echo "Frontend directory not found!"; exit 1; }
+cd frontend || { echo "Frontend directory not found!"; exit 1; }
 echo -e "\n${GREEN}[*] Setting up Frontend...${NC}"
 
 # Node Modules Check

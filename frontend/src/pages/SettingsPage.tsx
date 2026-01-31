@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Settings as SettingsIcon, Shield, Database, Cpu, Plus, Trash2, Save, CheckCircle2, AlertCircle, RefreshCw } from 'lucide-react';
+import { Settings as SettingsIcon, Shield, Cpu, Plus, Trash2, Save, CheckCircle2, AlertCircle, RefreshCw } from 'lucide-react';
 
 interface ProviderConfig {
   name: string;
@@ -128,11 +128,11 @@ const SettingsPage: React.FC = () => {
     <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900 flex items-center gap-3">
+          <h1 className="text-3xl font-bold text-slate-900 dark:text-white flex items-center gap-3">
             <SettingsIcon className="w-8 h-8 text-blue-600" />
             System Settings
           </h1>
-          <p className="text-slate-500 mt-1">Configure your LLM providers and rotation preferences.</p>
+          <p className="text-slate-500 dark:text-slate-400 mt-1">Configure your LLM providers and rotation preferences.</p>
         </div>
         <button
           onClick={handleSave}
@@ -153,11 +153,11 @@ const SettingsPage: React.FC = () => {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
         <aside className="space-y-1">
           <nav className="flex flex-col gap-1">
-            <button className="flex items-center gap-3 px-4 py-3 bg-blue-50 text-blue-700 rounded-xl font-semibold transition-all">
+            <button className="flex items-center gap-3 px-4 py-3 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 rounded-xl font-semibold transition-all">
               <Cpu className="w-5 h-5" />
               LLM Configuration
             </button>
-            <button className="flex items-center gap-3 px-4 py-3 text-slate-500 hover:bg-white rounded-xl transition-all opacity-50 cursor-not-allowed">
+            <button className="flex items-center gap-3 px-4 py-3 text-slate-500 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800 rounded-xl transition-all opacity-50 cursor-not-allowed">
               <Shield className="w-5 h-5" />
               Security & Privacy
             </button>
@@ -165,8 +165,8 @@ const SettingsPage: React.FC = () => {
         </aside>
 
         <section className="md:col-span-2 space-y-6">
-          <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 space-y-6">
-            <div className="flex items-center gap-2 font-bold text-slate-800 border-b border-slate-50 pb-4">
+          <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 space-y-6">
+            <div className="flex items-center gap-2 font-bold text-slate-800 dark:text-white border-b border-slate-50 dark:border-slate-700 pb-4">
               <Cpu className="w-5 h-5 text-blue-600" />
               Active Provider
             </div>
@@ -177,7 +177,7 @@ const SettingsPage: React.FC = () => {
                   key={p.name}
                   onClick={() => setSettings({ ...settings, active_provider: p.name })}
                   className={`p-4 rounded-xl border-2 transition-all flex flex-col items-center gap-2 ${
-                    settings.active_provider === p.name ? 'border-blue-500 bg-blue-50/50' : 'border-slate-100 hover:border-slate-200'
+                    settings.active_provider === p.name ? 'border-blue-500 bg-blue-50/50 dark:bg-blue-900/20' : 'border-slate-100 dark:border-slate-700 hover:border-slate-200 dark:hover:border-slate-600'
                   }`}
                 >
                   <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-white text-[10px] uppercase ${
@@ -185,7 +185,7 @@ const SettingsPage: React.FC = () => {
                   }`}>
                     {p.name.substring(0, 3)}
                   </div>
-                  <span className={`font-bold capitalize ${settings.active_provider === p.name ? 'text-blue-700' : 'text-slate-600'}`}>
+                  <span className={`font-bold capitalize ${settings.active_provider === p.name ? 'text-blue-700 dark:text-blue-400' : 'text-slate-600 dark:text-slate-400'}`}>
                     {p.name}
                   </span>
                 </button>
@@ -194,15 +194,15 @@ const SettingsPage: React.FC = () => {
           </div>
 
           {settings.providers.map((p) => (
-            <div key={p.name} className={`bg-white p-6 rounded-2xl shadow-sm border border-slate-100 space-y-6 transition-all ${settings.active_provider !== p.name ? 'opacity-50 grayscale scale-[0.98]' : ''}`}>
+            <div key={p.name} className={`bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 space-y-6 transition-all ${settings.active_provider !== p.name ? 'opacity-50 grayscale scale-[0.98]' : ''}`}>
               <div className="flex items-center justify-between">
-                <div className="font-bold text-slate-800 capitalize border-l-4 border-blue-500 pl-3">{p.name} Engine Configuration</div>
-                <span className="text-[10px] uppercase font-bold px-2 py-0.5 bg-blue-100 text-blue-600 rounded">Dynamic Rotation</span>
+                <div className="font-bold text-slate-800 dark:text-white capitalize border-l-4 border-blue-500 pl-3">{p.name} Engine Configuration</div>
+                <span className="text-[10px] uppercase font-bold px-2 py-0.5 bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300 rounded">Dynamic Rotation</span>
               </div>
 
               <div className="space-y-6">
                 <div>
-                  <label className="text-xs font-bold text-slate-400 uppercase tracking-widest block mb-3">Authorized API Keys</label>
+                  <label className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest block mb-3">Authorized API Keys</label>
                   <div className="space-y-2">
                     {p.keys.map((key, i) => (
                       <div key={i} className="flex gap-2 animate-in slide-in-from-right-2 duration-300">
@@ -210,7 +210,7 @@ const SettingsPage: React.FC = () => {
                           type="password" 
                           value={key}
                           readOnly
-                          className="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm font-mono"
+                          className="flex-1 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm font-mono text-slate-600 dark:text-white"
                         />
                         <button onClick={() => removeKey(p.name, i)} className="p-2 text-slate-300 hover:text-red-500 transition-colors">
                           <Trash2 className="w-4 h-4" />
@@ -223,7 +223,7 @@ const SettingsPage: React.FC = () => {
                          placeholder={`Add ${p.name} key...`}
                          value={newKey[p.name] || ''}
                          onChange={(e) => setNewKey({ ...newKey, [p.name]: e.target.value })}
-                         className="flex-1 bg-white border border-slate-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-100 rounded-lg px-3 py-2 text-sm transition-all"
+                         className="flex-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 focus:border-blue-500 focus:ring-1 focus:ring-blue-100 rounded-lg px-3 py-2 text-sm transition-all dark:text-white"
                        />
                        <button onClick={() => addKey(p.name)} className="px-4 py-2 bg-slate-900 text-white rounded-lg font-bold text-sm hover:bg-slate-800 transition-colors">
                          <Plus className="w-4 h-4" />
@@ -233,10 +233,10 @@ const SettingsPage: React.FC = () => {
                 </div>
 
                 <div>
-                   <label className="text-xs font-bold text-slate-400 uppercase tracking-widest block mb-3">Model Pool</label>
+                   <label className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest block mb-3">Model Pool</label>
                    <div className="flex flex-wrap gap-2 mb-3">
                       {p.models.map((model, i) => (
-                        <div key={i} className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-full text-xs font-semibold text-slate-700">
+                        <div key={i} className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-full text-xs font-semibold text-slate-700 dark:text-slate-300">
                           {model}
                           <button onClick={() => removeModel(p.name, i)} className="text-slate-400 hover:text-red-500 transition-colors">
                             <Trash2 className="w-3 h-3" />
@@ -253,7 +253,7 @@ const SettingsPage: React.FC = () => {
                          placeholder="Add model..."
                          value={newModel[p.name] || ''}
                          onChange={(e) => setNewModel({ ...newModel, [p.name]: e.target.value })}
-                         className="bg-white border border-dashed border-slate-300 rounded-full px-4 py-1.5 text-xs focus:border-blue-500 outline-none w-48"
+                         className="bg-white dark:bg-slate-900 border border-dashed border-slate-300 dark:border-slate-600 rounded-full px-4 py-1.5 text-xs focus:border-blue-500 outline-none w-48 dark:text-white"
                        />
                        <datalist id={`models-${p.name}`}>
                           {fetchedModels[p.name]?.map(m => <option key={m} value={m} />)}
@@ -262,7 +262,7 @@ const SettingsPage: React.FC = () => {
                        <button 
                          onClick={() => fetchAvailableModels(p.name)} 
                          disabled={loadingModels === p.name}
-                         className="p-1.5 bg-slate-100 text-slate-500 rounded-full hover:bg-slate-200 transition-colors"
+                         className="p-1.5 bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 rounded-full hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors"
                          title="Fetch available models from provider"
                        >
                          <RefreshCw className={`w-3 h-3 ${loadingModels === p.name ? 'animate-spin' : ''}`} />

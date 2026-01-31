@@ -31,11 +31,13 @@ class TestDetail(BaseModel):
     test_id: str
     title: str
     parts: List[Part]
+    published_at: Optional[datetime] = None
 
 class TestSummary(BaseModel):
     test_id: str
     title: str
     path: str
+    published_at: Optional[datetime] = None
 
 class UserResult(BaseModel):
     id: str # Unique ID for this attempt (e.g. test_id + timestamp)
@@ -68,3 +70,7 @@ class PipelineRunRequest(BaseModel):
     part: int
     test_id: str = "ETS_Test_01"
     config: Optional[Dict[str, Any]] = None
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str

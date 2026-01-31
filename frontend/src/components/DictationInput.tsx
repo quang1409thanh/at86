@@ -11,14 +11,14 @@ interface DictationInputProps {
 export default function DictationInput({ value, onChange, placeholder = "Type what you hear...", className }: DictationInputProps) {
     return (
         <div className={cn("space-y-2", className)}>
-            <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
+            <label className="text-sm font-medium text-gray-700 dark:text-slate-400 flex items-center gap-2">
                 <Keyboard size={16} /> Dictation
             </label>
             <textarea
                 value={value}
                 onChange={(e) => onChange(e.target.value)}
                 placeholder={placeholder}
-                className="w-full min-h-[100px] p-4 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all font-mono text-sm leading-relaxed resize-y"
+                className="w-full min-h-[100px] p-4 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-slate-500 focus:border-blue-500 dark:focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:focus:ring-blue-900/30 transition-all font-mono text-sm leading-relaxed resize-y"
             />
         </div>
     )

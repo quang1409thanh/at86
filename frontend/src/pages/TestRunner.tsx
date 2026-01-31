@@ -17,7 +17,7 @@ export default function TestRunner() {
 
   useEffect(() => {
     if (!testId) return;
-    api.get<TestDetail>(`/tests/${testId}`)
+    api.get<TestDetail>(`/toeic/tests/${testId}`)
       .then(res => setTest(res.data))
       .catch(err => console.error(err))
       .finally(() => setLoading(false));
@@ -81,7 +81,7 @@ export default function TestRunner() {
     };
 
     try {
-        await api.post('/results', result);
+        await api.post('/toeic/results', result);
         navigate(`/result/${resultId}`, { state: { result, test } }); 
     } catch (error) {
         console.error("Failed to submit", error);
@@ -95,7 +95,7 @@ export default function TestRunner() {
           <div className="flex gap-6">
               <span className={cn(
                   "font-black w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 border-2 transition-all text-sm",
-                  answers[q.id] ? "bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-100" : "bg-white text-gray-400 border-gray-100"
+                  answers[q.id] ? "bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-100 dark:shadow-none" : "bg-white dark:bg-slate-800 text-gray-400 dark:text-gray-500 border-gray-100 dark:border-slate-700"
               )}>
                   {q.id.replace(/^.*q/, '')}
               </span>
@@ -104,7 +104,7 @@ export default function TestRunner() {
                   {partNumber <= 2 && q.audio && <AudioPlayer src={`${test?.test_id}/${q.audio}`} />}
                   
                   {q.image && (
-                      <div className="border border-gray-100 rounded-2xl overflow-hidden max-w-lg shadow-sm">
+                      <div className="border border-gray-100 dark:border-slate-700 rounded-2xl overflow-hidden max-w-lg shadow-sm">
                           <img 
                               src={`http://localhost:8000/static/${test?.test_id}/${q.image}`} 
                               alt={`Question ${q.id}`}
@@ -113,17 +113,17 @@ export default function TestRunner() {
                       </div>
                   )}
 
-                  {q.text && <p className="font-bold text-xl text-gray-900">{q.text}</p>}
+                  {q.text && <p className="font-bold text-xl text-gray-900 dark:text-white">{q.text}</p>}
 
                   {/* Part 2: Transcription of the Question itself is key */}
                   {partNumber === 2 && (
-                      <div className="space-y-3 bg-blue-50/20 p-6 rounded-3xl border border-blue-50/50">
+                      <div className="space-y-3 bg-blue-50/20 dark:bg-blue-900/10 p-6 rounded-3xl border border-blue-50/50 dark:border-blue-900/20">
                           <label className="text-[10px] font-black text-blue-400 uppercase tracking-widest pl-1">Question Transcription</label>
                           <DictationInput 
                               value={transcripts[q.id]?.['question'] || ""}
                               onChange={(val) => handleDictation(q.id, 'question', val)}
                               placeholder="What was the question exactly? (e.g. Where is the...)"
-                              className="bg-white border-blue-100"
+                              className="bg-white dark:bg-slate-800 border-blue-100 dark:border-slate-700 dark:text-white"
                           />
                       </div>
                   )}
@@ -134,7 +134,7 @@ export default function TestRunner() {
                               value={notes[q.id] || ""}
                               onChange={(val) => handleNote(q.id, val)}
                               placeholder="Why did you choose this answer? (Rationale)"
-                              className="bg-blue-50/30 border-blue-100"
+                              className="bg-blue-50/30 dark:bg-slate-800 border-blue-100 dark:border-slate-700 dark:text-white"
                           />
                       </div>
                   )}
@@ -149,7 +149,7 @@ export default function TestRunner() {
                                   <label 
                                       className={cn(
                                           "flex items-center gap-4 p-5 rounded-2xl border-2 cursor-pointer transition-all",
-                                          isSelected ? "border-blue-500 bg-blue-50/50" : "border-gray-100 hover:border-blue-200 hover:bg-gray-50"
+                                          isSelected ? "border-blue-500 bg-blue-50/50 dark:bg-blue-900/20" : "border-gray-100 dark:border-slate-700 hover:border-blue-200 dark:hover:border-slate-600 hover:bg-gray-50 dark:hover:bg-slate-800"
                                       )}
                                   >
                                       <input 
@@ -162,11 +162,11 @@ export default function TestRunner() {
                                       />
                                       <div className={cn(
                                           "w-8 h-8 rounded-full border-2 flex items-center justify-center text-sm font-black transition-all",
-                                          isSelected ? "border-blue-600 bg-blue-600 text-white shadow-sm" : "border-gray-200 text-gray-400"
+                                          isSelected ? "border-blue-600 bg-blue-600 text-white shadow-sm" : "border-gray-200 dark:border-slate-600 text-gray-400 dark:text-gray-500"
                                       )}>
                                           {optionKey}
                                       </div> 
-                                      <span className={cn("font-bold text-lg", isSelected ? "text-blue-900" : "text-gray-700")}>
+                                      <span className={cn("font-bold text-lg", isSelected ? "text-blue-900 dark:text-blue-400" : "text-gray-700 dark:text-white")}>
                                           {q.options ? opt : `Option ${opt}`}
                                       </span>
                                   </label>
@@ -177,7 +177,7 @@ export default function TestRunner() {
                                               value={transcripts[q.id]?.[optionKey] || ""}
                                               onChange={(val) => handleDictation(q.id, optionKey, val)}
                                               placeholder={partNumber === 1 ? `Transcribe statement ${optionKey}...` : `Transcribe response ${optionKey}...`}
-                                              className="bg-white/50 border-gray-100 text-sm"
+                                              className="bg-white/50 dark:bg-slate-800 border-gray-100 dark:border-slate-700 text-sm dark:text-white"
                                           />
                                       </div>
                                   )}
@@ -195,37 +195,37 @@ export default function TestRunner() {
   if (!test) return <div className="p-8 text-center text-red-500">Test not found.</div>;
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8 pb-32">
-        <header className="mb-6 flex justify-between items-center bg-white p-6 rounded-2xl shadow-sm border border-gray-100 sticky top-20 z-10">
+    <div className="max-w-4xl mx-auto space-y-8 pb-32 animate-in fade-in duration-500">
+        <header className="mb-6 flex justify-between items-center bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-700 sticky top-20 z-10">
             <div>
-                <h1 className="text-xl font-bold text-gray-900">{test.title}</h1>
-                <p className="text-sm text-gray-500 font-medium">{Object.keys(answers).length} questions answered</p>
+                <h1 className="text-xl font-bold text-gray-900 dark:text-white">{test.title}</h1>
+                <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">{Object.keys(answers).length} questions answered</p>
             </div>
-            <button onClick={handleSubmit} className="px-8 py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition shadow-lg">
+            <button onClick={handleSubmit} className="px-8 py-3 bg-blue-600 dark:bg-blue-500 text-white font-bold rounded-xl hover:bg-blue-700 dark:hover:bg-blue-600 transition shadow-lg">
                 Submit Test
             </button>
         </header>
 
         {test.parts.map(part => (
-            <div key={part.part_number} className="bg-white rounded-3xl p-8 shadow-sm border border-gray-100 mb-12">
+            <div key={part.part_number} className="bg-white dark:bg-slate-800 rounded-3xl p-8 shadow-sm border border-gray-100 dark:border-slate-700 mb-12">
                 <div className="flex items-center justify-between mb-6">
-                    <h2 className="text-2xl font-black text-gray-800 tracking-tight">Part {part.part_number}</h2>
+                    <h2 className="text-2xl font-black text-gray-800 dark:text-white tracking-tight">Part {part.part_number}</h2>
                 </div>
                 
-                <p className="text-gray-500 font-medium mb-8 leading-relaxed border-l-4 border-blue-500 pl-4">{part.instructions}</p>
+                <p className="text-gray-500 dark:text-gray-400 font-medium mb-8 leading-relaxed border-l-4 border-blue-500 pl-4">{part.instructions}</p>
 
                 <div className="space-y-12">
                     {part.questions?.map(q => renderQuestion(q, part.part_number))}
 
                     {part.groups?.map(group => (
-                        <div key={group.id} className="p-8 bg-gray-50 rounded-3xl border border-gray-100 space-y-8">
+                        <div key={group.id} className="p-8 bg-gray-50 dark:bg-slate-900 rounded-3xl border border-gray-100 dark:border-slate-700 space-y-8">
                             <div className="space-y-6">
                                 {group.audio && <AudioPlayer src={`${test.test_id}/${group.audio}`} />}
                                 {group.passage_images?.map((img, idx) => (
-                                    <img key={idx} src={`http://localhost:8000/static/${test.test_id}/${img}`} alt="Passage" className="w-full h-auto rounded-xl shadow-sm border border-gray-200" />
+                                    <img key={idx} src={`http://localhost:8000/static/${test.test_id}/${img}`} alt="Passage" className="w-full h-auto rounded-xl shadow-sm border border-gray-200 dark:border-slate-700" />
                                 ))}
                                 {group.passage_text && (
-                                    <div className="prose prose-blue max-w-none whitespace-pre-wrap font-medium text-gray-800 leading-relaxed italic border-l-4 border-blue-200 pl-6 bg-white p-6 rounded-2xl shadow-sm">
+                                    <div className="prose prose-blue dark:prose-invert max-w-none whitespace-pre-wrap font-medium text-gray-800 dark:text-white leading-relaxed italic border-l-4 border-blue-200 dark:border-blue-800 pl-6 bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm">
                                         {group.passage_text}
                                     </div>
                                 )}
@@ -234,11 +234,11 @@ export default function TestRunner() {
                                         value={transcripts[group.id]?.['main'] || ""}
                                         onChange={(val) => handleDictation(group.id, 'main', val)}
                                         placeholder="Transcribe the talk/conversation..."
-                                        className="bg-white p-4 rounded-2xl border-dashed border-2 border-blue-100"
+                                        className="bg-white dark:bg-slate-800 p-4 rounded-2xl border-dashed border-2 border-blue-100 dark:border-slate-700 dark:text-white"
                                     />
                                 )}
                             </div>
-                            <div className="space-y-12 pl-4 border-l-2 border-gray-100 ml-2">
+                            <div className="space-y-12 pl-4 border-l-2 border-gray-100 dark:border-slate-800 ml-2">
                                 {group.questions.map(q => renderQuestion(q, part.part_number))}
                             </div>
                         </div>
