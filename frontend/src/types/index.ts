@@ -48,4 +48,7 @@ export interface UserResult {
     answers: Record<string, string>;
     user_transcripts?: Record<string, Record<string, string>>;
     user_notes?: Record<string, string>;
+    rag_indexed?: boolean;
+    rag_indexed_at?: string;
+    mistakes_count?: number;
 }

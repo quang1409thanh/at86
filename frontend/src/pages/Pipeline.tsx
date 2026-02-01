@@ -1,9 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Play, Terminal, RefreshCw, CheckCircle2, Cpu, FolderOpen, FileText, Layout } from 'lucide-react';
+import { Play, Terminal, RefreshCw, CheckCircle2, Cpu, FolderOpen, FileText, Layout, Shield } from 'lucide-react';
+
+interface KeyConfig {
+  key: string;
+  label: string;
+  is_enabled: boolean;
+}
 
 interface ProviderConfig {
   name: string;
-  keys: string[];
+  keys: KeyConfig[];
   models: string[];
   current_key_index: number;
   current_model_index: number;
@@ -26,6 +32,7 @@ const Pipeline: React.FC = () => {
   const [config, setConfig] = useState<PipelineConfig | null>(null);
   const [logs, setLogs] = useState<string[]>([]);
   const [isRunning, setIsRunning] = useState(false);
+  const [runningPart, setRunningPart] = useState<number | null>(null);
   const [activePromptPart, setActivePromptPart] = useState<number | null>(null);
   const [testId, setTestId] = useState(() => {
     const now = new Date();
@@ -72,6 +79,27 @@ const Pipeline: React.FC = () => {
     }
   };
 
+  const fetchStatus = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/pipeline/status`);
+      const data = await res.json();
+      if (data.running) {
+        setIsRunning(true);
+        setTestId(data.test_id);
+        setRunningPart(data.part);
+      } else {
+        setIsRunning(false);
+        setRunningPart(null);
+      }
+      // Restore logs if available and we have none
+      if (data.logs && data.logs.length > 0 && logs.length === 0) {
+        setLogs(data.logs);
+      }
+    } catch (err) {
+      console.error("Failed to fetch status", err);
+    }
+  };
+
   const fetchBrowserItems = async (path: string) => {
     try {
       const res = await fetch(`${API_BASE}/pipeline/browse?path=${encodeURIComponent(path)}`);
@@ -94,9 +122,20 @@ const Pipeline: React.FC = () => {
       const msg = event.data;
       setLogs(prev => [...prev, msg]);
       
+      // Real-time config update on rotation
+      if (msg.startsWith("[ROTATION]")) {
+        fetchConfig();
+      }
+      
+      // Handle state message from server
+      if (msg.startsWith("[STATE]")) {
+        // Already running, restore state handled by fetchStatus
+      }
+      
       // Auto-detect completion
       if (msg.includes("Batch process ended") || msg.includes("Critical Error")) {
         setIsRunning(false);
+        setRunningPart(null);
         // Optional: Simple browser notification
         if (Notification.permission === "granted") {
            new Notification("Pipeline Complete", { body: msg });
@@ -125,6 +164,7 @@ const Pipeline: React.FC = () => {
     }
 
     fetchConfig();
+    fetchStatus(); // Check if pipeline is already running
     const interval = setInterval(fetchConfig, 5000);
     connectWS();
     
@@ -279,10 +319,15 @@ const Pipeline: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-1 space-y-6">
           {/* Target Test Configuration */}
-          <section className="bg-white dark:bg-slate-800 p-6 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-700">
+          <section className={`bg-white dark:bg-slate-800 p-6 rounded-3xl shadow-sm border ${isRunning ? 'border-emerald-400/50 ring-2 ring-emerald-400/20' : 'border-slate-100 dark:border-slate-700'}`}>
              <div className="text-slate-900 dark:text-white font-bold flex items-center gap-2 mb-4">
                 <Layout className="w-5 h-5 text-blue-600" />
                 Target Test
+                {isRunning && (
+                  <span className="ml-auto text-[10px] font-black bg-emerald-100 dark:bg-emerald-900/50 text-emerald-600 dark:text-emerald-400 px-2 py-0.5 rounded-full animate-pulse">
+                    Part {runningPart} Running
+                  </span>
+                )}
              </div>
              <div className="space-y-2">
                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Test Identifier (Merging Key)</label>
@@ -292,11 +337,12 @@ const Pipeline: React.FC = () => {
                      type="text" 
                      value={testId}
                      onChange={(e) => setTestId(e.target.value)}
-                     className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-700 rounded-2xl pl-12 pr-4 py-3 text-sm font-bold focus:bg-white dark:focus:bg-slate-800 focus:border-blue-500 transition-all outline-none dark:text-white"
+                     disabled={isRunning}
+                     className={`w-full bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-700 rounded-2xl pl-12 pr-4 py-3 text-sm font-bold focus:bg-white dark:focus:bg-slate-800 focus:border-blue-500 transition-all outline-none dark:text-white ${isRunning ? 'opacity-70 cursor-not-allowed' : ''}`}
                      placeholder="e.g. ETS_Test_2024"
                    />
                 </div>
-                <p className="text-[10px] text-slate-400 px-1 mt-1">Parts run with the same ID will be merged into a single test.</p>
+                <p className="text-[10px] text-slate-400 px-1 mt-1">{isRunning ? 'Pipeline is running with this Test ID.' : 'Parts run with the same ID will be merged into a single test.'}</p>
              </div>
           </section>
 
@@ -310,19 +356,36 @@ const Pipeline: React.FC = () => {
             </div>
             
             <div className="space-y-3">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block pl-1">Active Model</label>
               {activeProvider?.models.map((model, idx) => {
                  const isActive = idx === activeProvider.current_model_index;
                  return (
                   <div key={model} className={`relative flex items-center gap-3 p-4 rounded-2xl border-2 transition-all ${
-                    isActive ? 'border-emerald-500 bg-emerald-50/50 dark:bg-emerald-900/20 shadow-md scale-[1.02]' : 'border-slate-50 dark:border-slate-700 text-slate-400 opacity-60'
+                    isActive ? 'border-emerald-500 bg-emerald-50/50 dark:bg-emerald-900/20 shadow-md' : 'border-slate-50 dark:border-slate-700 text-slate-400 opacity-60'
                   }`}>
-                    {isActive && <div className="absolute -left-1 top-1/2 -translate-y-1/2 w-2 h-8 bg-emerald-500 rounded-full" />}
                     <div className={`p-2 rounded-lg ${isActive ? 'bg-emerald-600 text-white' : 'bg-slate-100 dark:bg-slate-700'}`}>
                       {isActive ? <CheckCircle2 className="w-4 h-4" /> : <div className="w-4 h-4" />}
                     </div>
+                    <div className={`text-sm font-bold ${isActive ? 'text-emerald-900 dark:text-emerald-400' : 'dark:text-white'}`}>{model}</div>
+                  </div>
+                 )
+              })}
+            </div>
+
+            <div className="mt-6 space-y-3">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block pl-1">Active Resource (Key)</label>
+              {activeProvider?.keys.map((k, idx) => {
+                 const isActive = idx === activeProvider.current_key_index;
+                 return (
+                  <div key={idx} className={`relative flex items-center gap-3 p-4 rounded-2xl border-2 transition-all ${
+                    isActive ? 'border-blue-500 bg-blue-50/50 dark:bg-blue-900/20 shadow-md' : 'border-slate-50 dark:border-slate-700 text-slate-400 opacity-60'
+                  }`}>
+                    <div className={`p-2 rounded-lg ${isActive ? 'bg-blue-600 text-white' : 'bg-slate-100 dark:bg-slate-700'}`}>
+                      <Shield className="w-4 h-4" />
+                    </div>
                     <div>
-                      <div className={`text-sm font-bold ${isActive ? 'text-emerald-900 dark:text-emerald-400' : 'dark:text-white'}`}>{model}</div>
-                      {isActive && <div className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold uppercase tracking-widest mt-0.5">Active</div>}
+                      <div className={`text-sm font-bold ${isActive ? 'text-blue-900 dark:text-blue-400' : 'dark:text-white'}`}>{k.label}</div>
+                      {isActive && <div className="text-[10px] text-blue-600 dark:text-blue-400 font-bold uppercase tracking-widest mt-0.5">Currently Using</div>}
                     </div>
                   </div>
                  )

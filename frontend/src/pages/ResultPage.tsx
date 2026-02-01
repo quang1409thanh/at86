@@ -2,8 +2,9 @@ import { useEffect, useState } from 'react';
 import { useLocation, Link, useParams } from 'react-router-dom';
 import type { UserResult, TestDetail, Question } from '../types';
 import { api } from '../api/client';
+import MarkdownRenderer from '../components/MarkdownRenderer';
 import { cn } from '../lib/utils';
-import { CheckCircle, XCircle, Home, FileText, Loader2 } from 'lucide-react';
+import { CheckCircle, XCircle, Home, FileText, Loader2, Database, Brain, MessageCircle, Sparkles } from 'lucide-react';
 import DiffViewer from '../components/DiffViewer';
 import AudioPlayer from '../components/AudioPlayer';
 
@@ -14,6 +15,57 @@ export default function ResultPage() {
     const [result, setResult] = useState<UserResult | null>(location.state?.result || null);
     const [test, setTest] = useState<TestDetail | null>(location.state?.test || null);
     const [loading, setLoading] = useState(!result || !test);
+    
+    // RAG states
+    const [isSavingToRAG, setIsSavingToRAG] = useState(false);
+    const [ragSaveSuccess, setRagSaveSuccess] = useState(false);
+    const [activeExplanation, setActiveExplanation] = useState<string | null>(null);
+    const [explanationLoading, setExplanationLoading] = useState<string | null>(null);
+    const [explanations, setExplanations] = useState<Record<string, string>>({});
+
+    useEffect(() => {
+        if (result?.rag_indexed) {
+            setRagSaveSuccess(true);
+        }
+    }, [result]);
+
+    const handleSaveToRAG = async () => {
+        if (!resultId) return;
+        setIsSavingToRAG(true);
+        try {
+            await api.post(`/rag/index/result/${resultId}`);
+            setRagSaveSuccess(true);
+            // Don't auto-hide the success state anymore, as it's now a persistent flag
+        } catch (error) {
+            console.error('Error saving to RAG:', error);
+        } finally {
+            setIsSavingToRAG(false);
+        }
+    };
+
+    const handleGetExplanation = async (questionId: string, userAnswer: string, correctAnswer: string, partNumber: number) => {
+        if (!test || explanations[questionId]) {
+            setActiveExplanation(activeExplanation === questionId ? null : questionId);
+            return;
+        }
+        
+        setExplanationLoading(questionId);
+        setActiveExplanation(questionId);
+        try {
+            const response = await api.post('/rag/explain', {
+                test_id: test.test_id,
+                question_id: questionId,
+                user_answer: userAnswer,
+                correct_answer: correctAnswer,
+                part_number: partNumber
+            });
+            setExplanations(prev => ({ ...prev, [questionId]: response.data.answer }));
+        } catch (error) {
+            setExplanations(prev => ({ ...prev, [questionId]: 'Không thể tải giải thích. Vui lòng thử lại.' }));
+        } finally {
+            setExplanationLoading(null);
+        }
+    };
 
     useEffect(() => {
         if (!resultId) return;
@@ -166,7 +218,7 @@ export default function ResultPage() {
                                         <div className="flex items-center gap-2 text-yellow-800 font-black uppercase text-[10px] tracking-widest">
                                             Expert Explanation
                                         </div>
-                                        <p className="text-gray-700 text-sm font-medium leading-relaxed italic">{q.explanation}</p>
+                                        <MarkdownRenderer content={q.explanation} className="text-gray-700 text-sm font-medium leading-relaxed italic" />
                                     </div>
                                 )}
                             </div>
@@ -176,7 +228,34 @@ export default function ResultPage() {
                                 <div className="flex items-center gap-2 text-yellow-800 font-black uppercase text-[10px] tracking-widest">
                                     Expert Explanation
                                 </div>
-                                <p className="text-gray-700 text-sm font-medium leading-relaxed italic">{q.explanation}</p>
+                                <MarkdownRenderer content={q.explanation} className="text-gray-700 text-sm font-medium leading-relaxed italic" />
+                            </div>
+                        )}
+
+                        {/* AI Explanation for Wrong Answers */}
+                        {!isCorrect && (
+                            <div className="mt-4">
+                                <button
+                                    onClick={() => handleGetExplanation(q.id, userAnswer || '', q.correct_answer || '', partNumber)}
+                                    className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 text-white text-sm font-bold hover:shadow-lg hover:shadow-indigo-200 dark:hover:shadow-indigo-900/50 transition-all"
+                                >
+                                    {explanationLoading === q.id ? (
+                                        <Loader2 size={16} className="animate-spin" />
+                                    ) : (
+                                        <MessageCircle size={16} />
+                                    )}
+                                    {explanations[q.id] ? 'Ẩn/Hiện giải thích AI' : 'Hỏi AI: Tại sao tôi sai?'}
+                                </button>
+                                
+                                {activeExplanation === q.id && explanations[q.id] && (
+                                    <div className="mt-4 p-5 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800 animate-in fade-in slide-in-from-top-2 duration-300">
+                                        <h4 className="flex items-center gap-2 text-sm font-bold text-slate-900 dark:text-white mb-3">
+                                            <Sparkles size={14} className="text-indigo-500" />
+                                            Giải thích từ Coach
+                                        </h4>
+                                        <MarkdownRenderer content={explanations[q.id]} isAssistant className="text-sm" />
+                                    </div>
+                                )}
                             </div>
                         )}
                     </div>
@@ -187,18 +266,63 @@ export default function ResultPage() {
 
     return (
         <div className="max-w-4xl mx-auto space-y-8 pb-32">
+            {/* Success Notification */}
+            {ragSaveSuccess && (
+                <div className="fixed top-20 right-6 z-50 animate-slide-in">
+                    <div className="flex items-center gap-3 px-6 py-4 bg-green-500 text-white rounded-2xl shadow-lg">
+                        <CheckCircle size={24} />
+                        <div>
+                            <p className="font-bold">Đã lưu vào Knowledge Base!</p>
+                            <p className="text-sm opacity-90">Coach sẽ phân tích lỗi sai của bạn</p>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             <header className="flex items-center justify-between bg-white dark:bg-slate-800 p-8 rounded-3xl shadow-sm border border-gray-100 dark:border-slate-700">
                 <div className="space-y-1">
                     <h1 className="text-3xl font-black text-gray-900 dark:text-white tracking-tight">{test.title}</h1>
                     <p className="text-gray-500 dark:text-gray-400 font-medium">Completed on {new Date(result.timestamp).toLocaleDateString()}</p>
                 </div>
-                <Link to="/" className="p-3 rounded-2xl bg-gray-50 dark:bg-slate-700 text-gray-400 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition shadow-inner">
-                    <Home size={28} />
-                </Link>
+                <div className="flex items-center gap-3">
+                    {/* Save to RAG Button */}
+                    <button
+                        onClick={handleSaveToRAG}
+                        disabled={isSavingToRAG || ragSaveSuccess}
+                        className={cn(
+                            "flex items-center gap-2 px-5 py-3 rounded-2xl font-bold transition-all",
+                            ragSaveSuccess
+                                ? "bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 cursor-default"
+                                : "bg-gradient-to-r from-indigo-500 to-purple-600 text-white hover:shadow-lg hover:shadow-indigo-200 dark:hover:shadow-indigo-900/50"
+                        )}
+                    >
+                        {isSavingToRAG ? (
+                            <Loader2 size={18} className="animate-spin" />
+                        ) : ragSaveSuccess ? (
+                            <CheckCircle size={18} />
+                        ) : (
+                            <Database size={18} />
+                        )}
+                        {ragSaveSuccess ? 'Đã lưu!' : 'Lưu để phân tích'}
+                    </button>
+                    
+                    {/* Coach Link */}
+                    <Link 
+                        to="/coach" 
+                        className="flex items-center gap-2 px-5 py-3 rounded-2xl bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 font-bold hover:bg-blue-100 dark:hover:bg-blue-900/50 transition"
+                    >
+                        <Brain size={18} />
+                        Coach
+                    </Link>
+                    
+                    <Link to="/" className="p-3 rounded-2xl bg-gray-50 dark:bg-slate-700 text-gray-400 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition shadow-inner">
+                        <Home size={28} />
+                    </Link>
+                </div>
             </header>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="bg-blue-600 rounded-3xl p-8 text-white shadow-xl shadow-blue-100 flex flex-col items-center justify-center text-center">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                <div className="bg-blue-600 rounded-3xl p-8 text-white flex flex-col items-center justify-center text-center">
                     <div className="text-5xl font-black mb-2">{result.score}</div>
                     <div className="text-blue-100 font-bold uppercase tracking-widest text-xs">Estimated Score</div>
                 </div>
@@ -210,8 +334,17 @@ export default function ResultPage() {
                     <div className="text-4xl font-black text-blue-600 dark:text-blue-400 mb-2 text-center flex items-center justify-center">
                         {Math.round((result.correct_count / result.total_questions) * 100)}%
                     </div>
-                    <div className="text-gray-400 font-bold uppercase tracking-widest text-xs">Performance Percentage</div>
+                    <div className="text-gray-400 font-bold uppercase tracking-widest text-xs">Performance</div>
                 </div>
+                {/* AI Explanation Card */}
+                <button 
+                    onClick={() => handleGetExplanation('overall', '', '', 0)}
+                    className="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-3xl p-8 text-white shadow-xl shadow-indigo-100 dark:shadow-indigo-900/30 flex flex-col items-center justify-center text-center hover:scale-105 transition-transform cursor-pointer"
+                >
+                    <Sparkles size={32} className="mb-2" />
+                    <div className="font-bold">Hỏi AI</div>
+                    <div className="text-indigo-200 text-xs">Giải thích lỗi sai</div>
+                </button>
             </div>
 
             <div className="space-y-12">

@@ -49,11 +49,19 @@ class UserResult(BaseModel):
     answers: Dict[str, str] # map question_id -> selected_option
     user_transcripts: Optional[Dict[str, Dict[str, str]]] = None # map question_id -> {option_key: text}
     user_notes: Optional[Dict[str, str]] = None # map question_id -> rationale note
+    rag_indexed: Optional[bool] = False
+    rag_indexed_at: Optional[datetime] = None
+    mistakes_count: Optional[int] = 0
 
 # Pipeline Schemas
+class KeyConfig(BaseModel):
+    key: str
+    label: str
+    is_enabled: bool = True
+
 class ProviderConfig(BaseModel):
     name: str  # e.g., "google", "openai", "claude"
-    keys: List[str] = []
+    keys: List[KeyConfig] = []
     models: List[str] = []
     current_key_index: int = 0
     current_model_index: int = 0

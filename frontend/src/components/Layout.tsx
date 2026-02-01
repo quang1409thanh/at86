@@ -36,6 +36,7 @@ export default function Layout() {
           <NavItem to="/" icon={<Home size={20} />} label="Dashboard" collapsed={!sidebarOpen} />
           <NavItem to="/tests" icon={<BookOpen size={20} />} label="Tests" collapsed={!sidebarOpen} />
           <NavItem to="/history" icon={<BarChart2 size={20} />} label="History" collapsed={!sidebarOpen} />
+          <NavItem to="/coach" icon={<Zap size={20} />} label="AI Coach" collapsed={!sidebarOpen} />
           <NavItem to="/pipeline" icon={<Terminal size={20} />} label="Pipeline" collapsed={!sidebarOpen} />
           
           <div className={`pt-4 mt-4 border-t border-gray-100 dark:border-slate-700 transition-all ${!sidebarOpen && 'hidden'}`}>

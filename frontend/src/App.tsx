@@ -9,6 +9,9 @@ import SettingsPage from './pages/SettingsPage';
 import Pipeline from './pages/Pipeline';
 import ApiDocs from './pages/ApiDocs';
 import Changelog from './pages/Changelog';
+import CoachPage from './pages/CoachPage';
+import ChatWidget from './components/ChatWidget';
+import PipelineIndicator from './components/PipelineIndicator';
 
 import UserProfile from './pages/UserProfile';
 import LoginPage from './pages/LoginPage';
@@ -16,6 +19,7 @@ import { ProtectedRoute } from './contexts/AuthContext';
 
 function App() {
   return (
+    <>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         
@@ -28,6 +32,7 @@ function App() {
           <Route path="profile" element={<UserProfile />} />
           <Route path="api-docs" element={<ApiDocs />} />
           <Route path="changelog" element={<Changelog />} />
+          <Route path="coach" element={<CoachPage />} />
           
           <Route path="pipeline" element={
             <ProtectedRoute adminOnly>
@@ -41,6 +46,11 @@ function App() {
           } />
         </Route>
       </Routes>
+      
+      {/* Global Widgets */}
+      <ChatWidget />
+      <PipelineIndicator />
+    </>
   );
 }
 

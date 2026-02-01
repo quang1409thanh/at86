@@ -13,21 +13,21 @@ class RotationManager:
                 cls._instance._initialized = False
             return cls._instance
 
-    def __init__(self):
+    def __init__(self, rotation_callback=None):
         if self._initialized: return
         self._initialized = True
         
-        # Structure: { name: { keys: [], models: [], key_idx: 0, model_idx: 0 } }
+        # Structure: { name: { keys: [{key, label}], models: [], key_idx: 0, model_idx: 0 } }
         self.providers = {}
         self.active_provider = "google"
+        self.rotation_callback = rotation_callback  # Callback to notify external systems on rotation
         
-        # Database connection is imported inside methods to avoid circular imports during startup if needed
-        # or we rely on sys.path hacks. Assuming backend is importable.
         try:
             from backend.app.db.session import SessionLocal
-            from backend.app.db.models import LLMGlobalConfig
+            from backend.app.db.models import LLMProvider, LLMKey
             self.SessionLocal = SessionLocal
-            self.LLMGlobalConfig = LLMGlobalConfig
+            self.LLMProvider = LLMProvider
+            self.LLMKey = LLMKey
             self._has_db = True
         except ImportError as e:
             print(f"[!] Warning: Could not import backend.app.db: {e}. Persistence disabled.")
@@ -37,79 +37,124 @@ class RotationManager:
 
     def _load_config(self):
         # 1. Try to load from DB
-        db_config = None
         if self._has_db:
             try:
                 db = self.SessionLocal()
-                db_config = db.query(self.LLMGlobalConfig).first()
+                db_providers = db.query(self.LLMProvider).all()
+                if db_providers:
+                    for p in db_providers:
+                        # Load keys for this provider
+                        keys = db.query(self.LLMKey).filter(self.LLMKey.provider_id == p.id).all()
+                        self.providers[p.name] = {
+                            "keys": [{"key": k.key_value, "label": k.label} for k in keys],
+                            "models": p.models,
+                            "key_idx": p.current_key_idx,
+                            "model_idx": p.current_model_idx
+                        }
+                        if p.is_active:
+                            self.active_provider = p.name
+                    db.close()
+                    print(f"[*] Loaded LLM config from Database (Active: {self.active_provider})")
+                    return
                 db.close()
             except Exception as e:
                 print(f"[!] Warning: DB Connection failed: {e}")
 
-        if db_config:
-            self.active_provider = db_config.active_provider
-            self.providers = db_config.providers
-            print(f"[*] Loaded LLM config from Database (Provider: {self.active_provider})")
-            return
-
-        # 2. Fallback to Env Vars (same as before)
+        # 2. Fallback to Env Vars and Seed DB
         load_dotenv(override=True)
         self.active_provider = os.getenv("LLM_PROVIDER", "google").lower()
         
+        google_keys = [k.strip() for k in os.getenv("GEMINI_API_KEYS", os.getenv("GEMINI_API_KEY", "")).split(",") if k.strip()]
         self.providers["google"] = {
-            "keys": [k.strip() for k in os.getenv("GEMINI_API_KEYS", os.getenv("GEMINI_API_KEY", "")).split(",") if k.strip()],
+            "keys": [{"key": k, "label": f"Key {i+1}"} for i, k in enumerate(google_keys)],
             "models": [m.strip() for m in os.getenv("GEMINI_MODELS", "gemini-2.0-flash,gemini-1.5-flash").split(",") if m.strip()],
             "key_idx": 0,
             "model_idx": 0
         }
+        
+        openai_keys = [k.strip() for k in os.getenv("OPENAI_API_KEY", "").split(",") if k.strip()]
         self.providers["openai"] = {
-            "keys": [k.strip() for k in os.getenv("OPENAI_API_KEY", "").split(",") if k.strip()],
+            "keys": [{"key": k, "label": f"Key {i+1}"} for i, k in enumerate(openai_keys)],
             "models": [m.strip() for m in os.getenv("OPENAI_MODEL", "gpt-4o-mini").split(",") if m.strip()],
             "key_idx": 0,
             "model_idx": 0
         }
+        
+        # Save initial fallback to DB
+        self._save_to_db()
 
     def _save_to_db(self):
         if not self._has_db: return
         try:
             db = self.SessionLocal()
-            config = db.query(self.LLMGlobalConfig).first()
-            if not config:
-                config = self.LLMGlobalConfig()
-                db.add(config)
-            
-            config.active_provider = self.active_provider
-            config.providers = self.providers
+            for name, data in self.providers.items():
+                p = db.query(self.LLMProvider).filter(self.LLMProvider.name == name).first()
+                if not p:
+                    p = self.LLMProvider(
+                        name=name,
+                        models=data["models"],
+                        is_active=(name == self.active_provider),
+                        current_key_idx=data["key_idx"],
+                        current_model_idx=data["model_idx"]
+                    )
+                    db.add(p)
+                    db.flush()
+                else:
+                    p.is_active = (name == self.active_provider)
+                    p.models = data["models"]
+                    p.current_key_idx = data["key_idx"]
+                    p.current_model_idx = data["model_idx"]
+
+                # Handle Keys
+                # For simplicity, clear and re-add keys or update if match
+                # Let's just sync them
+                existing_keys = db.query(self.LLMKey).filter(self.LLMKey.provider_id == p.id).all()
+                existing_keys_map = {k.key_value: k for k in existing_keys}
+                
+                new_key_values = set()
+                for k_data in data["keys"]:
+                    val = k_data["key"]
+                    label = k_data["label"]
+                    new_key_values.add(val)
+                    if val in existing_keys_map:
+                        existing_keys_map[val].label = label
+                    else:
+                        new_key = self.LLMKey(provider_id=p.id, key_value=val, label=label)
+                        db.add(new_key)
+                
+                # Delete old keys
+                for k in existing_keys:
+                    if k.key_value not in new_key_values:
+                        db.delete(k)
+
             db.commit()
-            db.refresh(config)
             db.close()
             print(f"[*] Saved LLM config to Database")
         except Exception as e:
-             print(f"[!] Error saving config to DB: {e}")
+            print(f"[!] Error saving config to DB: {e}")
 
     def update_settings(self, settings: dict):
         with self._lock:
             self.active_provider = settings.get("active_provider", self.active_provider)
             
-            # Logic: Update internal state from request
             for p_data in settings.get("providers", []):
                 name = p_data["name"]
                 current_p = self.providers.get(name, {})
-                current_key_idx = current_p.get("key_idx", 0)
-                current_model_idx = current_p.get("model_idx", 0)
-
-                new_keys = p_data.get("keys", [])
+                
+                new_keys = p_data.get("keys", []) # List of {key, label}
                 new_models = p_data.get("models", [])
                 
-                # Safety check for indices
-                if current_key_idx >= len(new_keys): current_key_idx = 0
-                if current_model_idx >= len(new_models): current_model_idx = 0
+                key_idx = current_p.get("key_idx", 0)
+                model_idx = current_p.get("model_idx", 0)
+                
+                if key_idx >= len(new_keys): key_idx = 0
+                if model_idx >= len(new_models): model_idx = 0
                 
                 self.providers[name] = {
                     "keys": new_keys,
                     "models": new_models,
-                    "key_idx": current_key_idx,
-                    "model_idx": current_model_idx
+                    "key_idx": key_idx,
+                    "model_idx": model_idx
                 }
             
             self._save_to_db()
@@ -118,14 +163,13 @@ class RotationManager:
         with self._lock:
             p = self.providers.get(self.active_provider)
             if not p:
-                # auto-heal if missing structure but valid provider name?
-                # or just fallback
                 raise Exception(f"Provider {self.active_provider} not configured.")
             
             if not p.get("keys"):
                 raise Exception(f"No API keys configured for {self.active_provider}.")
             
-            return p["keys"][p["key_idx"]], p["models"][p["model_idx"]]
+            k_obj = p["keys"][p["key_idx"]]
+            return k_obj["key"], p["models"][p["model_idx"]], k_obj["label"]
 
     def get_active_resource_desc(self):
         with self._lock:
@@ -133,7 +177,12 @@ class RotationManager:
             if not p: return f"Unknown Provider ({self.active_provider})"
             if not p.get("keys"): return f"{self.active_provider.capitalize()} (No Keys)"
             
-            return f"{self.active_provider.capitalize()} {p['models'][p['model_idx']]} (Key {p['key_idx'] + 1}/{len(p['keys'])})"
+            k_obj = p["keys"][p["key_idx"]]
+            return f"{self.active_provider.capitalize()} {p['models'][p['model_idx']]} ({k_obj['label']})"
+
+    def set_rotation_callback(self, callback):
+        """Allows setting a callback after initialization."""
+        self.rotation_callback = callback
 
     def rotate(self, reason="") -> bool:
         with self._lock:
@@ -147,7 +196,15 @@ class RotationManager:
                 p["key_idx"] += 1
                 if p["key_idx"] >= len(p["keys"]):
                     p["key_idx"] = 0
+                    self._save_to_db() # Persist the loop back to 0
                     return False
+            
+            self._save_to_db() # Persist the rotation
+            if self.rotation_callback:
+                try:
+                    self.rotation_callback(self.get_active_resource_desc())
+                except Exception:
+                    pass  # Don't let callback failures break rotation
             return True
 
 rotation_manager = RotationManager()

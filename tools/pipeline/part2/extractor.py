@@ -37,12 +37,12 @@ def process_part2(audio_text: str, question_id: str = "q11"):
     print(f"[*] Processing Part 2 for ID: {question_id}")
     
     prompt = PART_2_PROMPT.format(audio_text=audio_text, question_id=question_id)
-    raw_response = call_llm(prompt)
+    questions_data = call_llm(prompt, validate_json=True)
     
     try:
-        data = json.loads(raw_response)
-        return data['questions']
+        if isinstance(questions_data, dict) and 'questions' in questions_data:
+            return questions_data['questions']
+        return questions_data
     except Exception as e:
-        print(f"[!] Failed to parse LLM response for {question_id}: {e}")
-        print(f"Raw response: {raw_response}")
+        print(f"[!] Unexpected data format for {question_id}: {questions_data}")
         raise e

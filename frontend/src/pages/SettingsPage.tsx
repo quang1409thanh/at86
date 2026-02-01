@@ -1,9 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { Settings as SettingsIcon, Shield, Cpu, Plus, Trash2, Save, CheckCircle2, AlertCircle, RefreshCw } from 'lucide-react';
 
+interface KeyConfig {
+  key: string;
+  label: string;
+  is_enabled: boolean;
+}
+
 interface ProviderConfig {
   name: string;
-  keys: string[];
+  keys: KeyConfig[];
   models: string[];
   current_key_index: number;
   current_model_index: number;
@@ -21,7 +27,7 @@ const SettingsPage: React.FC = () => {
     active_provider: 'google',
     providers: []
   });
-  const [newKey, setNewKey] = useState<{ [key: string]: string }>({});
+  const [newKey, setNewKey] = useState<{ [key: string]: { key: string; label: string } }>({});
   const [newModel, setNewModel] = useState<{ [key: string]: string }>({});
   const [fetchedModels, setFetchedModels] = useState<{ [key: string]: string[] }>({});
   const [loadingModels, setLoadingModels] = useState<string | null>(null);
@@ -81,16 +87,19 @@ const SettingsPage: React.FC = () => {
   };
 
   const addKey = (providerName: string) => {
-    const val = newKey[providerName];
-    if (!val?.trim()) return;
+    const { key, label } = newKey[providerName] || { key: '', label: '' };
+    if (!key?.trim()) return;
     
     setSettings(prev => ({
       ...prev,
       providers: prev.providers.map(p => 
-        p.name === providerName ? { ...p, keys: [...p.keys, val.trim()] } : p
+        p.name === providerName ? { 
+          ...p, 
+          keys: [...p.keys, { key: key.trim(), label: label.trim() || `Key ${p.keys.length + 1}`, is_enabled: true }] 
+        } : p
       )
     }));
-    setNewKey({ ...newKey, [providerName]: '' });
+    setNewKey({ ...newKey, [providerName]: { key: '', label: '' } });
   };
 
   const removeKey = (providerName: string, idx: number) => {
@@ -204,30 +213,56 @@ const SettingsPage: React.FC = () => {
                 <div>
                   <label className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest block mb-3">Authorized API Keys</label>
                   <div className="space-y-2">
-                    {p.keys.map((key, i) => (
-                      <div key={i} className="flex gap-2 animate-in slide-in-from-right-2 duration-300">
+                    {p.keys.map((kObj, i) => (
+                      <div key={i} className="space-y-1 p-3 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-100 dark:border-slate-700 animate-in slide-in-from-right-2 duration-300">
+                        <div className="flex items-center justify-between gap-2">
+                           <input 
+                              type="text" 
+                              value={kObj.label}
+                              onChange={(e) => {
+                                const updatedKeys = [...p.keys];
+                                updatedKeys[i] = { ...kObj, label: e.target.value };
+                                setSettings({
+                                  ...settings,
+                                  providers: settings.providers.map(prov => prov.name === p.name ? { ...prov, keys: updatedKeys } : prov)
+                                });
+                              }}
+                              className="bg-transparent border-none text-xs font-black text-blue-600 dark:text-blue-400 focus:ring-0 w-full p-0"
+                              placeholder="Key Label..."
+                           />
+                           <button onClick={() => removeKey(p.name, i)} className="p-1 text-slate-300 hover:text-red-500 transition-colors">
+                              <Trash2 className="w-3.5 h-3.5" />
+                           </button>
+                        </div>
                         <input 
                           type="password" 
-                          value={key}
+                          value={kObj.key}
                           readOnly
-                          className="flex-1 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm font-mono text-slate-600 dark:text-white"
+                          className="w-full bg-white dark:bg-slate-800 border-none rounded-lg px-2 py-1 text-xs font-mono text-slate-500 dark:text-slate-400"
                         />
-                        <button onClick={() => removeKey(p.name, i)} className="p-2 text-slate-300 hover:text-red-500 transition-colors">
-                          <Trash2 className="w-4 h-4" />
-                        </button>
                       </div>
                     ))}
-                    <div className="flex gap-2 mt-2">
-                       <input 
-                         type="text" 
-                         placeholder={`Add ${p.name} key...`}
-                         value={newKey[p.name] || ''}
-                         onChange={(e) => setNewKey({ ...newKey, [p.name]: e.target.value })}
-                         className="flex-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 focus:border-blue-500 focus:ring-1 focus:ring-blue-100 rounded-lg px-3 py-2 text-sm transition-all dark:text-white"
-                       />
-                       <button onClick={() => addKey(p.name)} className="px-4 py-2 bg-slate-900 text-white rounded-lg font-bold text-sm hover:bg-slate-800 transition-colors">
-                         <Plus className="w-4 h-4" />
-                       </button>
+                    <div className="flex flex-col gap-2 mt-4 p-3 border-2 border-dashed border-slate-100 dark:border-slate-800 rounded-2xl">
+                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Add New Resource</label>
+                       <div className="flex gap-2">
+                          <input 
+                            type="text" 
+                            placeholder="Key Value (sk-...)"
+                            value={newKey[p.name]?.key || ''}
+                            onChange={(e) => setNewKey({ ...newKey, [p.name]: { ...(newKey[p.name] || {}), key: e.target.value } })}
+                            className="flex-[2] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 focus:border-blue-500 focus:ring-1 focus:ring-blue-100 rounded-lg px-3 py-2 text-sm transition-all dark:text-white"
+                          />
+                          <input 
+                            type="text" 
+                            placeholder="Label (e.g. Account 1)"
+                            value={newKey[p.name]?.label || ''}
+                            onChange={(e) => setNewKey({ ...newKey, [p.name]: { ...(newKey[p.name] || {}), label: e.target.value } })}
+                            className="flex-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 focus:border-blue-500 focus:ring-1 focus:ring-blue-100 rounded-lg px-3 py-2 text-sm transition-all dark:text-white"
+                          />
+                          <button onClick={() => addKey(p.name)} className="px-4 py-2 bg-blue-600 text-white rounded-lg font-bold text-sm hover:bg-blue-700 transition-colors">
+                            <Plus className="w-4 h-4" />
+                          </button>
+                       </div>
                     </div>
                   </div>
                 </div>

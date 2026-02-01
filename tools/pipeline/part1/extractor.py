@@ -36,12 +36,18 @@ def process_part1(image_path: str, question_id: str = "q1", audio_text: str = No
         context_instruction = "- One statement must be objectively correct and clearly visible.\n- The other three should be plausible distractors (using related keywords but describing incorrect actions or objects)."
 
     prompt = PART_1_PROMPT.replace("{context_instruction}", context_instruction).replace("q1", question_id)
-    raw_response = call_llm(prompt, image_path=image_path)
+    questions_data = call_llm(prompt, image_path=image_path, validate_json=True)
     
-    data = json.loads(raw_response)
-    
+    # Enrichment
+    final_questions = []
+    # If call_llm already returned the list or dict
+    if isinstance(questions_data, dict) and 'questions' in questions_data:
+        final_questions = questions_data['questions']
+    else:
+        final_questions = questions_data
+
     # Enrich with image path expected by frontend
-    for q in data['questions']:
+    for q in final_questions:
         q['image'] = os.path.basename(image_path)
         
-    return data['questions']
+    return final_questions
